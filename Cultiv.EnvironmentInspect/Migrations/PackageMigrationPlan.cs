@@ -1,9 +1,17 @@
-﻿using Umbraco.Cms.Infrastructure.Packaging;
+﻿using System;
+using Umbraco.Cms.Core.Packaging;
 
 namespace Cultiv.EnvironmentInspect.Migrations
 {
-    public class PackageMigrationPlan : AutomaticPackageMigrationPlan
+    public class InstalledPackagesMigrationPlan : PackageMigrationPlan
     {
-        public PackageMigrationPlan() : base("Cultiv.EnvironmentInspect Dashboard") { }
+        public InstalledPackagesMigrationPlan() : base("Cultiv.EnvironmentInspect Dashboard")
+        {
+        }
+
+        protected override void DefinePlan()
+        {
+            To(new Guid("5681C92F-48BF-409A-A13F-530A712CA739"));
+        }
     }
 }
