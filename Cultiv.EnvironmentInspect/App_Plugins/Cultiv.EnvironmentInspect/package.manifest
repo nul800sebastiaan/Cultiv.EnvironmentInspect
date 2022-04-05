@@ -1,0 +1,20 @@
+﻿{
+  "allowPackageTelemetry": true,
+  "dashboards": [
+    {
+      "access": [
+        {
+          "grant": "admin"
+        }
+      ],
+      "alias": "Cultiv.EnvironmentInspect",
+      "view": "/App_Plugins/Cultiv.EnvironmentInspect/config.html",
+      "sections": [
+        "settings"
+      ]
+    }
+  ],
+  "javascript": [
+    "/App_Plugins/Cultiv.EnvironmentInspect/config.js"
+  ]
+}

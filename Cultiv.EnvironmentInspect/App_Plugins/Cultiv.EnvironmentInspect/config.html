@@ -1,0 +1,19 @@
+<div ng-controller="Cultiv.EnvironmentInspectController as vm">
+    <div class="umb-panel-group__details-status">
+        <div class="umb-panel-group__details-status-content">
+            <table class="table table-bordered table-condensed">
+                <tbody>
+                <tr style="background-color: #1b264f; color: white;">
+                    <th>Environment value path</th>
+                    <td>Provider / Value</td>
+                </tr>
+                <tr ng-repeat="environmentItem in vm.data">
+                    <th>{{ environmentItem.Key }}</th>
+                    <td style="overflow-wrap: anywhere;"><em style="font-size: 0.8em">{{ environmentItem.Provider }}</em> <br /> {{ environmentItem.Value || "&nbsp;" }}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>

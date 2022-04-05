@@ -1,0 +1,27 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+    <PropertyGroup>
+        <CultivEnvironmentInspectContentFilesPath>$(MSBuildThisFileDirectory)..\App_Plugins\Cultiv.EnvironmentInspect\**\*.*</CultivEnvironmentInspectContentFilesPath>
+    </PropertyGroup>
+
+    <Target Name="CopyCultivEnvironmentInspectAssets" BeforeTargets="Build">
+        <ItemGroup>
+            <CultivEnvironmentInspectContentFiles Include="$(CultivEnvironmentInspectContentFilesPath)" />
+        </ItemGroup>
+        <Message Text="Copying Cultiv.EnvironmentInspect files: $(CultivEnvironmentInspectContentFilesPath) - #@(CultivEnvironmentInspectContentFiles->Count()) files"  Importance="high" />
+        <Copy
+            SourceFiles="@(CultivEnvironmentInspectContentFiles)"
+            DestinationFiles="@(CultivEnvironmentInspectContentFiles->'$(MSBuildProjectDirectory)\App_Plugins\Cultiv.EnvironmentInspect\%(RecursiveDir)%(Filename)%(Extension)')"
+            SkipUnchangedFiles="true" />
+
+    </Target>
+
+    <Target Name="ClearCultivEnvironmentInspectAssets" BeforeTargets="Clean">
+        <ItemGroup>
+            <CultivEnvironmentInspectDir Include="$(MSBuildProjectDirectory)\App_Plugins\Cultiv.EnvironmentInspect\" />
+        </ItemGroup>
+        <Message Text="Clear old Cultiv.EnvironmentInspect data"  Importance="high" />
+        <RemoveDir Directories="@(CultivEnvironmentInspectDir)"  />
+    </Target>
+
+</Project>

@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net5.0</TargetFramework>
+        <ContentTargetFolders>.</ContentTargetFolders>
+        <Product>Cultiv.EnvironmentInspect</Product>
+        <PackageId>Cultiv.EnvironmentInspect</PackageId>
+        <Title>Cultiv Environment Variables Inspector</Title>
+        <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
+        <PackageTags>umbraco plugin package</PackageTags>
+        <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
+        <Authors>Sebastiaan Janssen</Authors>
+        <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <AssemblyName>Cultiv.EnvironmentInspect</AssemblyName>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Umbraco.Cms.Web.Website" Version="9.0.0" />
+        <PackageReference Include="Umbraco.Cms.Web.BackOffice" Version="9.0.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="App_Plugins\Cultiv.EnvironmentInspect\**\*.*">
+            <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+            <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+        </Content>
+        <None Include="build\**\*.*">
+            <Pack>True</Pack>
+            <PackagePath>buildTransitive</PackagePath>
+        </None>
+        <None Include="..\README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="../LICENSE" Pack="true" PackagePath="" />
+        <None Include="../logo.png" Pack="true" PackagePath="" />
+    </ItemGroup>
+</Project>
