@@ -6,7 +6,7 @@
         <PackageId>Cultiv.EnvironmentInspect</PackageId>
         <Title>Cultiv Environment Variables Inspector</Title>
         <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
-        <PackageTags>umbraco plugin package</PackageTags>
+        <PackageTags>umbraco plugin package umbraco-marketplace</PackageTags>
         <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
         <Authors>Sebastiaan Janssen</Authors>
         <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
