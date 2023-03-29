@@ -8,3 +8,20 @@ For example, we can see some of the values here are coming from `appSetting.json
 ![Screenshot with an example of some variables, values and their sources](http://raw.githubusercontent.com/nul800sebastiaan/Cultiv.EnvironmentInspect/main/example.png)
 
 This makes it easier to learn why some variables you expected to work have not been applied.
+
+## Masking values from 'secret' based providers
+
+By default, the plugin will output all values in plain text. To 'mask' the output, please add the following to the `appsettings.json` and/or `appsettings.{Environment}.json` file(s):
+
+```json
+"Cultiv": {
+	"EnvironmentInspect": {
+		"SecretProviders": [
+			"AzureKeyVaultConfigurationProvider",
+			"JsonConfigurationProvider for 'secrets.json' (Optional)"
+		]
+	}
+}
+```
+
+In the above example, the values coming from Azure Key Vault and the local 'User Secrets' set via Visual Studio will output masked values.
