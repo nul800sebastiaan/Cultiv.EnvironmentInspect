@@ -22,9 +22,9 @@ namespace Cultiv.EnvironmentInspect.Site
             var debugViewModel = new List<DebugViewModel>();
 
             if (_configuration is not IConfigurationRoot configurationRoot) return debugViewModel;
-            
-            // Adapted from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Abstractions/src/ConfigurationRootExtensions.cs#L36
-            void RecurseChildren(IEnumerable<IConfigurationSection> children)
+
+			// Adapted from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Abstractions/src/ConfigurationRootExtensions.cs#L36
+			void RecurseChildren(List<string> secretProviders, IEnumerable<IConfigurationSection> children)
             {
                 foreach (var child in children)
                 {
@@ -35,8 +35,8 @@ namespace Cultiv.EnvironmentInspect.Site
                         debugViewModel.Add(new DebugViewModel
                         {
                             Key = child.Path,
-                            Value = valueAndProvider.Value,
-                            Provider = valueAndProvider.Provider.ToString(),
+                            Value = secretProviders.Contains(valueAndProvider.Provider.ToString()) ? "Masked ******" : valueAndProvider.Value,
+                            Provider = valueAndProvider.Provider.ToString()
                         });
                     }
                     else
@@ -47,11 +47,13 @@ namespace Cultiv.EnvironmentInspect.Site
                         });
                     }
 
-                    RecurseChildren(child.GetChildren());
+                    RecurseChildren(secretProviders, child.GetChildren());
                 }
             }
 
-            RecurseChildren(configurationRoot.GetChildren());
+            var secretProviders = _configuration.GetSection("Cultiv:EnvironmentInspect:SecretProviders").Get<List<string>>() ?? new List<string>();
+
+            RecurseChildren(secretProviders, configurationRoot.GetChildren());
 
             return debugViewModel;
         }
