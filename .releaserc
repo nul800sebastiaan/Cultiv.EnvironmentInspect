@@ -1,0 +1,30 @@
+{
+  "branches": [
+    "main/v2",
+    "main/v1"
+  ],
+  "plugins": [
+    "@semantic-release/commit-analyzer", {
+      "preset": "conventionalcommits",
+      "releaseRules": [
+        {"message": "*", "release": "patch"},
+        {"breaking": true, "release": "major"},
+        {"message": "docs", "scope": "README", "release": "patch"},
+        {"message": "perf", "release": "patch"},
+        {"message": "fix", "release": "patch"},
+        {"message": "deps", "release": "patch"},
+        {"message": "breaking", "release": "major"},
+        {"message": "feat", "release": "minor"}
+      ],
+      "parserOpts": {
+        "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
+      }
+    },
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "echo next version is: ${nextRelease.version}"
+      }
+    ]
+  ]
+}

@@ -1,16 +1,99 @@
+name: Verify Build
+
+env:
+  PATH_TO_CSPROJ: "Cultiv.EnvironmentInspect"
+  PATH_TO_CLIENT: "Cultiv.EnvironmentInspect.Client"
+  PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.TestSite"
+  DOTNET_VERSION: '9'
+
 on:
-  push:
-    branches:
-    - main
   pull_request:
     branches:
-    - main    
+    - develop/v2
+    - main/v2
+  workflow_dispatch:
+
 jobs:
+  setup:
+    name: Setup our build
+    runs-on: ubuntu-latest
+    outputs:
+      semver: ${{ steps.semantic.outputs.new_release_version }}
+
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+        
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          dry_run: true
+          branches: |
+            [
+              { 
+                'name': 'develop/v2'
+              },
+              {
+                'name': 'main/v2'
+              }
+            ]
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/commit-analyzer
+            @semantic-release/github
+
+      - name: Echo the version
+        run: |
+          echo ${{ steps.semantic.outputs.new_release_version }}
+          echo ${{ steps.semantic.outputs.new_release_major_version }}
+          echo ${{ steps.semantic.outputs.new_release_minor_version }}
+          echo ${{ steps.semantic.outputs.new_release_patch_version }}
+  
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Build
-      run: dotnet build --configuration Release
+
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Build Client
+      working-directory: ${{ env.PATH_TO_CLIENT }}
+      run: |
+        npm i
+
+    - name: Cache NuGet
+      id: nuget-packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-cache-${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj*') }}
+        restore-keys: |
+          nuget-cache-${{ runner.os }}-nuget-
+
+
+    - name: Build sln
+      run: dotnet build ${{ github.workspace }}/*.sln -c Release
+
+    - name: Start Project
+      working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
+
+    - name: CodeGen
+      working-directory: ${{ env.PATH_TO_CLIENT }}
+      run: |
+        sleep 10s
+        npm run generate
+        npm run build

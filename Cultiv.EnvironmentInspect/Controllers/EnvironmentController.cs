@@ -1,14 +1,29 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using Asp.Versioning;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
-using Umbraco.Cms.Web.BackOffice.Controllers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Umbraco.Cms.Api.Common.Attributes;
+using Umbraco.Cms.Api.Management.Controllers;
+using Umbraco.Cms.Api.Management.OpenApi;
+using Umbraco.Cms.Api.Management.Routing;
+using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Web.Common.Authorization;
 
-namespace Cultiv.EnvironmentInspect.Site
+namespace Cultiv.EnvironmentInspect.Controllers
 {
     [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
-    public class EnvironmentController : UmbracoAuthorizedJsonController
+    [VersionedApiBackOfficeRoute("environmentinspect")]
+    [ApiExplorerSettings(GroupName = "Cultiv.EnvironmentInspect")]
+    [ApiVersion("1.0")]
+    [MapToApi("environmentinspect-api")]
+    public class EnvironmentController : ManagementApiControllerBase
     {
         private readonly IConfiguration _configuration;
 
@@ -16,7 +31,9 @@ namespace Cultiv.EnvironmentInspect.Site
         {
             _configuration = configuration;
         }
-        
+
+        [HttpGet("getenvironment")]
+        [MapToApiVersion("1.0")]
         public List<DebugViewModel> GetEnvironment()
         {
             var debugViewModel = new List<DebugViewModel>();
@@ -51,7 +68,7 @@ namespace Cultiv.EnvironmentInspect.Site
                 }
             }
 
-            RecurseChildren(configurationRoot.GetChildren());
+            RecurseChildren(configurationRoot.GetChildren().Where(x => !string.IsNullOrEmpty(x.Path) ));
 
             return debugViewModel;
         }
@@ -76,5 +93,31 @@ namespace Cultiv.EnvironmentInspect.Site
             public string Value { get; set; }
             public string Provider { get; set; }
         }
+    }
+
+    public class EnvironmentInspectApiComposer : IComposer
+    {
+        public void Compose(IUmbracoBuilder builder)
+        {
+            builder.Services.ConfigureOptions<EnvironmentInspectApiSwaggerGenOptions>();
+        }
+    }
+
+    public class EnvironmentInspectApiSwaggerGenOptions : IConfigureOptions<SwaggerGenOptions>
+    {
+        public void Configure(SwaggerGenOptions options)
+        {
+            options.SwaggerDoc(
+                "environmentinspect-api",
+                new OpenApiInfo { Title = "Cultiv.EnvironmentInspect", Version = "1.0" }
+            );
+
+            options.OperationFilter<EnvironmentInspectApiSwaggerGenOptionsApiOperationSecurityFilter>();
+        }
+    }
+
+    public class EnvironmentInspectApiSwaggerGenOptionsApiOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
+    {
+        protected override string ApiName => "environmentinspect-api";
     }
 }

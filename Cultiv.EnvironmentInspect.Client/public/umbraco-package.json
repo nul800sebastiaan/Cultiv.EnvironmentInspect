@@ -1,0 +1,13 @@
+{
+  "$schema": "../node_modules/@umbraco-cms/backoffice/dist-cms/umbraco-package-schema.json",
+  "name": "EnvironmentInspect Dashboard",
+  "version": "0.2.0",
+  "extensions": [
+    {
+      "type": "bundle",
+      "alias": "cultiv.environmentinspect.bundle",
+      "name": "Cultiv.EnvironmentInspect.Bundle",
+      "js": "/App_Plugins/Cultiv.EnvironmentInspect/cultiv.environmentinspect.js"
+    }
+  ]
+}
