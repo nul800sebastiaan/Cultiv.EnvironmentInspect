@@ -1,20 +1,21 @@
 {
   "branches": [
-    "main/v2",
-    "develop/v2"
+    "main",
+    {
+      "name": "develop/v2",
+      "prerelease": "alpha"
+    }
   ],
   "plugins": [
     "@semantic-release/commit-analyzer", {
       "preset": "conventionalcommits",
       "releaseRules": [
-        {"message": "*", "release": "patch"},
-        {"breaking": true, "release": "major"},
-        {"message": "docs", "scope": "README", "release": "patch"},
-        {"message": "perf", "release": "patch"},
-        {"message": "fix", "release": "patch"},
-        {"message": "deps", "release": "patch"},
-        {"message": "breaking", "release": "major"},
-        {"message": "feat", "release": "minor"}
+        { "breaking": true, "release": "major" },
+        { "type": "docs", "scope": "README", "release": "patch" },
+        { "type": "perf", "release": "patch" },
+        { "type": "fix", "release": "patch" },
+        { "type": "deps", "release": "patch" },
+        { "type": "feat", "release": "minor" }
       ],
       "parserOpts": {
         "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
