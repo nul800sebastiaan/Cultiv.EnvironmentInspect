@@ -33,15 +33,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
         with:
-          branches: |
-            [
-              'main/v2',
-              'develop/v2',
-              {
-                'name': 'alpha',
-                'prerelease': true
-              }
-            ]
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
