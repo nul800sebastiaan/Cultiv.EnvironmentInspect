@@ -36,10 +36,11 @@ jobs:
           branches: |
             [
               { 
-                'name': 'main/v2'
+                "name": "main/v2"
               },
               {
-                'name': 'develop/v2'
+                "name": "develop/v2",
+                "prerelease": "alpha"
               }
             ]
           extra_plugins: |
