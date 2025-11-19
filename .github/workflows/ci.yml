@@ -19,7 +19,6 @@ jobs:
     outputs:
       semver: ${{ steps.semantic.outputs.new_release_version }}
 
-
     steps:
       - uses: actions/checkout@v5
         with:
@@ -32,16 +31,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           dry_run: true
-          branches: |
-            [
-              { 
-                'name': 'develop/v2',
-                'prerelease': 'alpha'
-              },
-              {
-                'name': 'main/v2'
-              }
-            ]
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
@@ -57,6 +46,7 @@ jobs:
   build:
     name: Build, Run, CodeGen and Package
     runs-on: ubuntu-latest
+    needs: setup
     timeout-minutes: 5
     steps:
 
