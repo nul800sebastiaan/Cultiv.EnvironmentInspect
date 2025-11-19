@@ -1,66 +1,64 @@
-name: Build and package
+name: Build and Package
 
 env:
-  PATH_TO_CSPROJ: "Cultiv.EnvironmentInspect"
-  PATH_TO_CLIENT: "Cultiv.EnvironmentInspect.Client"
-  PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.TestSite"
-  DOTNET_VERSION: '9'
+  PATH_TO_EXTENSION: "Cultiv.EnvironmentInspect"
+  PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.DemoSite"
+  DOTNET_VERSION: '10'
 
 on:
-  push:
-    branches: ["main/v1", "main/v2"]
-
   workflow_dispatch:
 
 jobs:
   setup:
-    name: Setup our build
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
       semver: ${{ steps.semantic.outputs.new_release_version }}
 
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           filter: tree:0
         
       - name: Semantic Release
         id: semantic
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
         with:
+          dry_run: true
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
             @semantic-release/github
 
-      - name: Can we echo the version
+      - name: Echo the version
         run: |
           echo ${{ steps.semantic.outputs.new_release_version }}
           echo ${{ steps.semantic.outputs.new_release_major_version }}
           echo ${{ steps.semantic.outputs.new_release_minor_version }}
           echo ${{ steps.semantic.outputs.new_release_patch_version }}
-
+  
   build:
-    needs: setup
+    name: Build, Run, CodeGen and Package
     runs-on: ubuntu-latest
+    needs: setup
+    timeout-minutes: 5
     steps:
 
-    - uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
     - name: Build Client
-      working-directory: ${{ env.PATH_TO_CLIENT }}
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
+        cd Client
         npm i
 
     - name: Cache NuGet
@@ -72,29 +70,46 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-nuget-
 
-    - name: Build sln
-      run: dotnet build ${{ github.workspace }}/*.sln -c Release
+    - name: Build Project
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: dotnet build -c Release   
 
     - name: Start Project
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
       run: |
         $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
+        echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
 
     - name: CodeGen
-      working-directory: ${{ env.PATH_TO_CLIENT }}
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
+        cd Client
         sleep 10s
-        npm run generate
-        npm run build
+        npm run generate-client
+
+    - name: Stop Project
+      working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+         Stop-Process -Id $env:DOTNET_PID
+         
+    - name: Build Client
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
+      run: |
+        cd Client
+        npm run build        
+
+    - name: Build sln
+      run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
 
     - name: pack
-      working-directory: ${{ env.PATH_TO_CSPROJ }}
-      run: dotnet pack --configuration Release
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
+      run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }}
     
     - name: Login
       run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
 
     - name: push
-      run: dotnet nuget push "${{ env.PATH_TO_CSPROJ }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
+      run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
       
