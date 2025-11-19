@@ -18,13 +18,14 @@
 	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
 	  <PackageIcon>logo.png</PackageIcon>
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <PackageVersion>$(PackageVersion)</PackageVersion>
+	  <Version>$(PackageVersion)</Version>
+	  <FileVersion>$(PackageVersion)</FileVersion>
   </PropertyGroup>
 
 
   <ItemGroup>
     <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.0.0-rc2" />
-    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.0.0-rc2" />
-    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.0.0-rc2" />
     <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.0.0-rc2" />
   </ItemGroup>
 
@@ -39,6 +40,7 @@
   <ItemGroup>
     <Folder Include="wwwroot\" />
 	  <None Include="../LICENSE" Pack="true" PackagePath="" />
+	  <None Include="../README.md" Pack="true" PackagePath="" />
 	  <None Include="../logo.png" Pack="true" PackagePath="" />
   </ItemGroup>
 

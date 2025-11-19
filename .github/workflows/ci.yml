@@ -14,20 +14,20 @@ on:
 
 jobs:
   setup:
-    name: Setup our build
+    name: Setup
     runs-on: ubuntu-latest
     outputs:
       semver: ${{ steps.semantic.outputs.new_release_version }}
 
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
         
       - name: Semantic Release
         id: semantic
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -35,7 +35,8 @@ jobs:
           branches: |
             [
               { 
-                'name': 'develop/v2'
+                'name': 'develop/v2',
+                 prerelease: true
               },
               {
                 'name': 'main/v2'
@@ -54,15 +55,16 @@ jobs:
           echo ${{ steps.semantic.outputs.new_release_patch_version }}
   
   build:
+    name: Build, Run, CodeGen and Package
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
 
-    - uses: actions/setup-dotnet@v4
+    - uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
