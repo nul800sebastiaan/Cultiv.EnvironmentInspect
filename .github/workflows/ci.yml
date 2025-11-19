@@ -92,7 +92,7 @@ jobs:
       run: |
         cd Client
         sleep 10s
-        npm run generate
+        npm run generate-client
 
     - name: Stop Project
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
