@@ -9,7 +9,7 @@ on:
   pull_request:
     branches:
     - develop/v2
-    - main/v2
+    - release/v2
   workflow_dispatch:
 
 jobs:

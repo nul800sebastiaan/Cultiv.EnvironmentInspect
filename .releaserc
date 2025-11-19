@@ -1,6 +1,6 @@
 {
   "branches": [
-    "main/v2",
+    "release/v2",
     {
       "name": "develop/v2",
       "prerelease": "alpha"
