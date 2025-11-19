@@ -90,7 +90,7 @@ jobs:
     - name: CodeGen
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
-        cd client
+        cd Client
         sleep 10s
         npm run generate
 
