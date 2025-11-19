@@ -69,6 +69,7 @@ jobs:
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
+        cd client
         npm i
 
     - name: Cache NuGet
