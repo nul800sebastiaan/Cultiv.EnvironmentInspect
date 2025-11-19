@@ -81,6 +81,10 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-nuget-
 
+    - name: Build Project
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: dotnet build -c Release   
+
     - name: Start Project
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
