@@ -38,10 +38,12 @@ jobs:
 
       - name: Echo the version
         run: |
-          echo ${{ steps.semantic.outputs.new_release_version }}
-          echo ${{ steps.semantic.outputs.new_release_major_version }}
-          echo ${{ steps.semantic.outputs.new_release_minor_version }}
-          echo ${{ steps.semantic.outputs.new_release_patch_version }}
+          echo "New release version: '${{ steps.semantic.outputs.new_release_version }}'"
+          echo "New release major: '${{ steps.semantic.outputs.new_release_major_version }}'"
+          echo "New release minor: '${{ steps.semantic.outputs.new_release_minor_version }}'"
+          echo "New release patch: '${{ steps.semantic.outputs.new_release_patch_version }}'"
+          echo "Last release version: '${{ steps.semantic.outputs.last_release_version }}'"
+          echo "New release published: '${{ steps.semantic.outputs.new_release_published }}'"
   
   build:
     name: Build, Run, CodeGen and Package

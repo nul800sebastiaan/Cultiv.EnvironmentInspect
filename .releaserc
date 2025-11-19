@@ -7,20 +7,24 @@
     }
   ],
   "plugins": [
-    "@semantic-release/commit-analyzer", {
-      "preset": "conventionalcommits",
-      "releaseRules": [
-        { "breaking": true, "release": "major" },
-        { "type": "docs", "scope": "README", "release": "patch" },
-        { "type": "perf", "release": "patch" },
-        { "type": "fix", "release": "patch" },
-        { "type": "deps", "release": "patch" },
-        { "type": "feat", "release": "minor" }
-      ],
-      "parserOpts": {
-        "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          { "breaking": true, "release": "major" },
+          { "type": "docs", "scope": "README", "release": "patch" },
+          { "type": "perf", "release": "patch" },
+          { "type": "fix", "release": "patch" },
+          { "type": "deps", "release": "patch" },
+          { "type": "feat", "release": "minor" }
+        ],
+        "parserOpts": {
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES"]
+        }
       }
-    },
+    ],
+    "@semantic-release/release-notes-generator",
     [
       "@semantic-release/exec",
       {
