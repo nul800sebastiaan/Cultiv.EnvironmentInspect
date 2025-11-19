@@ -86,6 +86,7 @@ jobs:
       shell: pwsh
       run: |
         $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
+        echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
 
     - name: CodeGen
       working-directory: ${{ env.PATH_TO_EXTENSION }}
@@ -98,7 +99,7 @@ jobs:
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
       run: |
-         Stop-Process -Id $MyProcess.Id
+         Stop-Process -Id $env:DOTNET_PID
          
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
