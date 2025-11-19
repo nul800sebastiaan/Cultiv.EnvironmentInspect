@@ -36,7 +36,7 @@ jobs:
             [
               { 
                 'name': 'develop/v2',
-                 prerelease: true
+                'prerelease': 'alpha'
               },
               {
                 'name': 'main/v2'
