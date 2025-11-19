@@ -1,10 +1,9 @@
 name: Verify Build
 
 env:
-  PATH_TO_CSPROJ: "Cultiv.EnvironmentInspect"
-  PATH_TO_CLIENT: "Cultiv.EnvironmentInspect.Client"
-  PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.TestSite"
-  DOTNET_VERSION: '9'
+  PATH_TO_EXTENSION: "Cultiv.EnvironmentInspect"
+  PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.DemoSite"
+  DOTNET_VERSION: '10'
 
 on:
   pull_request:
@@ -68,7 +67,7 @@ jobs:
         fetch-depth: 0
 
     - name: Build Client
-      working-directory: ${{ env.PATH_TO_CLIENT }}
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         npm i
 
@@ -81,10 +80,6 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-nuget-
 
-
-    - name: Build sln
-      run: dotnet build ${{ github.workspace }}/*.sln -c Release
-
     - name: Start Project
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
@@ -92,8 +87,23 @@ jobs:
         $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
 
     - name: CodeGen
-      working-directory: ${{ env.PATH_TO_CLIENT }}
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
+        cd client
         sleep 10s
         npm run generate
-        npm run build
+
+    - name: Stop Project
+      working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+         Stop-Process -Id $MyProcess.Id
+         
+    - name: Build Client
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
+      run: |
+        cd client
+        npm run build        
+
+    - name: Build sln
+      run: dotnet build ${{ github.workspace }}/*.slnx -c Release        

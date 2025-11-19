@@ -1,38 +1,45 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
-    <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
-        <ContentTargetFolders>.</ContentTargetFolders>
-        <Product>Cultiv.EnvironmentInspect</Product>
-        <PackageId>Cultiv.EnvironmentInspect</PackageId>
-        <Title>Cultiv Environment Variables Inspector</Title>
-        <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
-        <PackageTags>umbraco plugin package umbraco-marketplace</PackageTags>
-        <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
-        <Authors>Sebastiaan Janssen</Authors>
-        <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
-        <PackageLicenseFile>LICENSE</PackageLicenseFile>
-        <PackageIcon>logo.png</PackageIcon>
-        <PackageReadmeFile>README.md</PackageReadmeFile>
-        <AssemblyName>Cultiv.EnvironmentInspect</AssemblyName>
-	    <StaticWebAssetBasePath>App_Plugins/Cultiv.EnvironmentInspect</StaticWebAssetBasePath>
-        <PackageVersion>$(PackageVersion)</PackageVersion>
-        <Version>$(PackageVersion)</Version>
-	</PropertyGroup>
-    <PropertyGroup>
-        <MinVerTagPrefix>v</MinVerTagPrefix>
-    </PropertyGroup>
-    <ItemGroup>
-        <PackageReference Include="MinVer" Version="6.0.0">
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-          <PrivateAssets>all</PrivateAssets>
-        </PackageReference>
-        <PackageReference Include="Umbraco.Cms.Api.Management" Version="15.1.2" />
-    </ItemGroup>
-    <ItemGroup>
-        <None Include="..\README.md" Pack="true" PackagePath="\" />
-    </ItemGroup>
-    <ItemGroup>
-        <None Include="../LICENSE" Pack="true" PackagePath="" />
-        <None Include="../logo.png" Pack="true" PackagePath="" />
-    </ItemGroup>
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+  </PropertyGroup>
+
+  <PropertyGroup>
+	  <Product>Cultiv.EnvironmentInspect</Product>
+	  <PackageId>Cultiv.EnvironmentInspect</PackageId>
+	  <Title>Cultiv Environment Variables Inspector</Title>
+	  <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
+	  <PackageTags>umbraco plugin package umbraco-marketplace</PackageTags>
+	  <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
+	  <Authors>Sebastiaan Janssen</Authors>
+	  <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
+	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
+	  <PackageIcon>logo.png</PackageIcon>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Umbraco.Cms.Web.Website" Version="17.0.0-rc3" />
+    <PackageReference Include="Umbraco.Cms.Web.Common" Version="17.0.0-rc3" />
+    <PackageReference Include="Umbraco.Cms.Api.Common" Version="17.0.0-rc3" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" Version="17.0.0-rc3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Dont include the client folder as part of packaging nuget build -->
+    <Content Remove="Client\**" />
+
+    <!-- However make the Umbraco-package.json included for dotnet pack or nuget package and visible to the solution -->
+    <None Include="Client\public\umbraco-package.json" Pack="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\" />
+	  <None Include="../LICENSE" Pack="true" PackagePath="" />
+	  <None Include="../logo.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+
 </Project>

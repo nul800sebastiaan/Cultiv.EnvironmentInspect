@@ -1,0 +1,14 @@
+{
+  "id": "Cultiv.EnvironmentInspect",
+  "name": "Cultiv.EnvironmentInspect",
+  "version": "0.0.0",
+  "allowTelemetry": true,
+  "extensions": [
+    {
+      "name": "Cultiv Environment Inspect Bundle",
+      "alias": "Cultiv.EnvironmentInspect.Bundle",
+      "type": "bundle",
+      "js": "/App_Plugins/CultivEnvironmentInspect/cultiv-environment-inspect.js"
+    }
+  ]
+}
