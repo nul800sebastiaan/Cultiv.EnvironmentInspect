@@ -75,6 +75,12 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-nuget-
 
+    - name: Update umbraco-package.json version
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      working-directory: ${{ env.PATH_TO_EXTENSION }}
+      run: |
+        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/public/umbraco-package.json > temp.json && mv temp.json Client/public/umbraco-package.json
+
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
       run: dotnet build -c Release   
