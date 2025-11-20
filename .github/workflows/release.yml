@@ -14,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       semver: ${{ steps.semantic.outputs.new_release_version }}
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
 
     steps:
       - uses: actions/checkout@v5
@@ -31,14 +32,18 @@ jobs:
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
             @semantic-release/github
+            conventional-changelog-conventionalcommits
 
       - name: Echo the version
         run: |
-          echo ${{ steps.semantic.outputs.new_release_version }}
-          echo ${{ steps.semantic.outputs.new_release_major_version }}
-          echo ${{ steps.semantic.outputs.new_release_minor_version }}
-          echo ${{ steps.semantic.outputs.new_release_patch_version }}
+          echo "New release version: '${{ steps.semantic.outputs.new_release_version }}'"
+          echo "New release major: '${{ steps.semantic.outputs.new_release_major_version }}'"
+          echo "New release minor: '${{ steps.semantic.outputs.new_release_minor_version }}'"
+          echo "New release patch: '${{ steps.semantic.outputs.new_release_patch_version }}'"
+          echo "Last release version: '${{ steps.semantic.outputs.last_release_version }}'"
+          echo "New release published: '${{ steps.semantic.outputs.new_release_published }}'"
   
   build:
     name: Build, Run, CodeGen and Package
@@ -104,12 +109,15 @@ jobs:
       run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
 
     - name: pack
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }}
     
     - name: Login
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
 
     - name: push
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
       
