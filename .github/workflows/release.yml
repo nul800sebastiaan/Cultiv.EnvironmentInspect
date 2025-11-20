@@ -28,7 +28,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          dry_run: true
+          dry_run: false
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
