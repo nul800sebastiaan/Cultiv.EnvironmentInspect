@@ -6,6 +6,8 @@ env:
   DOTNET_VERSION: '10'
 
 on:
+  push:
+    branches: [ "develop/v2" ]
   pull_request:
     branches:
     - develop/v2
