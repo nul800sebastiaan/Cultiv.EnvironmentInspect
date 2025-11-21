@@ -51,20 +51,24 @@ jobs:
     needs: setup
     timeout-minutes: 5
     steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
 
     - uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - uses: actions/checkout@v5
+    - name: Setup Node.js environment
+      uses: actions/setup-node@v4
       with:
-        fetch-depth: 0
+        node-version: 'lts/*'
+        cache: 'npm'
+        cache-dependency-path: '${{env.PATH_TO_EXTENSION}}/Client/package-lock.json'
 
-    - name: Build Client
-      working-directory: ${{ env.PATH_TO_EXTENSION }}
-      run: |
-        cd Client
-        npm i
+    - name: Install dependencies
+      working-directory: ./${{env.PATH_TO_EXTENSION}}/Client
+      run: npm ci
 
     - name: Cache NuGet
       id: nuget-packages
@@ -75,11 +79,27 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-nuget-
 
-    - name: Update umbraco-package.json version
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+    - name: Update Version Files
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         jq '.version = "${{ needs.setup.outputs.semver }}"' Client/public/umbraco-package.json > temp.json && mv temp.json Client/public/umbraco-package.json
+        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/package.json > temp2.json && mv temp2.json Client/package.json
+
+        # Convert semantic version to numeric file version (e.g., 2.0.0-alpha.1 -> 2.0.0.1)
+        SEMVER="${{ needs.setup.outputs.semver }}"
+        if [[ $SEMVER == *"-"* ]]; then
+          BASE_VERSION=$(echo $SEMVER | cut -d'-' -f1)
+          PRERELEASE=$(echo $SEMVER | cut -d'-' -f2)
+          # Extract number from prerelease (e.g., alpha.1 -> 1, beta.2 -> 2)
+          PRERELEASE_NUM=$(echo $PRERELEASE | grep -o '[0-9]\+$' || echo "0")
+          FILE_VERSION="${BASE_VERSION}.${PRERELEASE_NUM}"
+        else
+          FILE_VERSION="${SEMVER}.0"
+        fi
+        
+        # Find and update csproj file
+        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" | head -1)
+        sed -i "s/<FileVersionNumber>.*<\/FileVersionNumber>/<FileVersionNumber>$FILE_VERSION<\/FileVersionNumber>/" "$CSPROJ_FILE"
 
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
@@ -116,7 +136,6 @@ jobs:
       run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
 
     - name: pack
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }}
     
