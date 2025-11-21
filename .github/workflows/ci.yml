@@ -103,7 +103,7 @@ jobs:
         
         # Find and update csproj file
         CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" | head -1)
-        sed -i "s/<FileVersionNumber>.*<\/FileVersionNumber>/<FileVersionNumber>$FILE_VERSION<\/FileVersionNumber>/" "$CSPROJ_FILE"
+        sed -i "s|<FileVersion>\$(FileVersionNumber)</FileVersion>|<FileVersion>$FILE_VERSION</FileVersion>|" "$CSPROJ_FILE"
 
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
