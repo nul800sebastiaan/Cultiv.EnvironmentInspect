@@ -20,7 +20,7 @@
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
 	  <PackageVersion>$(PackageVersion)</PackageVersion>
 	  <Version>$(PackageVersion)</Version>
-	  <FileVersion>$(PackageVersion)</FileVersion>
+    <FileVersion>$(FileVersionNumber)</FileVersion>
   </PropertyGroup>
 
 
