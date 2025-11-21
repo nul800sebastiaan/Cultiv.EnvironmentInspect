@@ -45,7 +45,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
                         {
                             Key = child.Path,
                             Value = valueAndProvider.Value,
-                            Provider = valueAndProvider.Provider.ToString(),
+                            Provider = valueAndProvider.Provider?.ToString(),
                         });
                     }
                     else
@@ -64,7 +64,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
 
             return debugViewModel;
         }
-        private static (string Value, IConfigurationProvider Provider) GetValueAndProvider(
+        private static (string? Value, IConfigurationProvider? Provider) GetValueAndProvider(
             IConfigurationRoot root,
             string key)
         {
@@ -81,9 +81,9 @@ namespace Cultiv.EnvironmentInspect.Controllers
 
         public class DebugViewModel
         {
-            public string Key { get; set; }
-            public string Value { get; set; }
-            public string Provider { get; set; }
+            public required string Key { get; set; }
+            public string? Value { get; set; }
+            public string? Provider { get; set; }
         }
 
 
