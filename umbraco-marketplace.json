@@ -1,13 +1,21 @@
 {
     "$schema": "https://marketplace.umbraco.com/umbraco-marketplace-schema.json",
-    "AlternatePackageNames": [
-        "Cultiv EnvironmentInspect"
-    ],
+    "Title": "Cultiv EnvironmentInspect",
     "AuthorDetails": {
         "Description": "From fostering contributions to learning what makes our developer community tick ☑️, to hosting a weekly open coding session to making coffee ☕ for colleagues. I do it all.  But I do need my kayak 🛶 sessions and live music 🎸too. Remember live music, from the before times?",
         "Url": "https://cultiv.nl",
-        "ImageUrl": "http://github.com/nul800sebastiaan.png"
-    },
+        "ImageUrl": "http://github.com/nul800sebastiaan.png",
+        "Contributors": [
+            {
+                "Name": "Jeavon Leopold",
+                "Url": "https://github.com/Jeavon"
+            },
+            {
+                "Name": "Matthew Hart",
+                "Url": "https://github.com/mattou07"
+            }
+        ]
+    },  
     "Category": "Developer Tools",
     "LicenseTypes": [
         "Free"
