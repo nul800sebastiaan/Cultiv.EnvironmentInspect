@@ -7,30 +7,40 @@ import { CultivEnvironmentInspectService } from "../api/sdk.gen";
 export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitElement) {
 
   @property({ type: Array }) environmentVariables: DebugViewModel[] = [];
+  @property({ type: Boolean }) isLoading: boolean = true;
 
   render() {
     return html`
-      <uui-table>
-        <uui-table-column style="width: 50%;"></uui-table-column>
-        <uui-table-head style="background-color: #1b264f; color: white">
-          <uui-table-head-cell>Environment value path</uui-table-head-cell>
-          <uui-table-head-cell>Value / Provider</uui-table-head-cell>
-        </uui-table-head>
-        ${when(this.environmentVariables.length, () => html`
-          ${repeat(this.environmentVariables,
-            (item) => item.key,
-            (item) => html`
-              <uui-table-row>
-                <uui-table-cell clip-text="">${item.key}</uui-table-cell>
-                <uui-table-cell clip-text="">
-                  <em style="font-size: 0.8em">${item.provider}</em>
-                  <br/>
-                  ${item.value}
-                </uui-table-cell>
-              </uui-table-row>
-          `)}
-        `)}
-      </uui-table>
+      ${when(this.isLoading, 
+        () => html`
+          <div class="loader-container">
+            <uui-loader></uui-loader>
+          </div>
+        `,
+        () => html`
+          <uui-table>
+            <uui-table-column style="width: 50%;"></uui-table-column>
+            <uui-table-head style="background-color: #1b264f; color: white">
+              <uui-table-head-cell>Environment value path</uui-table-head-cell>
+              <uui-table-head-cell>Value / Provider</uui-table-head-cell>
+            </uui-table-head>
+            ${when(this.environmentVariables.length, () => html`
+              ${repeat(this.environmentVariables,
+                (item) => item.key,
+                (item) => html`
+                  <uui-table-row>
+                    <uui-table-cell clip-text="">${item.key}</uui-table-cell>
+                    <uui-table-cell clip-text="">
+                      <em style="font-size: 0.8em">${item.provider}</em>
+                      <br/>
+                      ${item.value}
+                    </uui-table-cell>
+                  </uui-table-row>
+              `)}
+            `)}
+          </uui-table>
+        `
+      )}
     `;
   }
 
@@ -43,6 +53,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     } catch (e) {
       // Optionally handle error
       console.error("Failed to load environment variables", e);
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -54,6 +66,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     css`
       h4 {
         font-size: var(--uui-type-h4-size);
+      }
+
+      .loader-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4rem;
       }
     `,
   ];

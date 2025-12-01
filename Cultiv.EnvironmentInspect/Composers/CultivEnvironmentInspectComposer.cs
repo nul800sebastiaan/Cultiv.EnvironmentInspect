@@ -4,20 +4,30 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.OpenApi;
+
 using Swashbuckle.AspNetCore.SwaggerGen;
+
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Api.Common.OpenApi;
+using Umbraco.Cms.Core.Notifications;
+
+using Cultiv.EnvironmentInspect.NotificationHandlers;
+using Cultiv.EnvironmentInspect.Services;
 
 namespace Cultiv.EnvironmentInspect.Composers
 {
-    public class CultivEnvironmentInspectApiComposer : IComposer
+    public class CultivEnvironmentInspectComposer : IComposer
     {
         public void Compose(IUmbracoBuilder builder)
         {
-
+            // Register the environment inspect service
+            builder.Services.AddSingleton<IEnvironmentInspectService, EnvironmentInspectService>();
             builder.Services.AddSingleton<IOperationIdHandler, CustomOperationHandler>();
+
+            // Pre-warm the cache on application startup
+            builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, CachePrewarmHandler>();
 
             builder.Services.Configure<SwaggerGenOptions>(opt =>
             {
@@ -48,7 +58,7 @@ namespace Cultiv.EnvironmentInspect.Composers
             });
         }
 
-        public class CultivEnvironmentInspectOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
+         public class CultivEnvironmentInspectOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
         {
             protected override string ApiName => Constants.ApiName;
         }
