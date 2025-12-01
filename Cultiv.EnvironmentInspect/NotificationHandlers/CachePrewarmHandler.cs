@@ -23,7 +23,7 @@ namespace Cultiv.EnvironmentInspect.NotificationHandlers
             {
                 try
                 {
-                    _logger.LogInformation("Pre-warming environment inspect cache...");
+                    _logger.LogDebug("Pre-warming environment inspect cache...");
                     await _environmentService.GetEnvironmentDataAsync();
                     _logger.LogInformation("Environment inspect cache pre-warmed successfully");
                 }

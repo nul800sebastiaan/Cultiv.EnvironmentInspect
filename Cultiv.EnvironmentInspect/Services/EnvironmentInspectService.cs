@@ -35,7 +35,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                     {
                         try
                         {
-                            _logger.LogInformation("Re-warming environment inspect cache after configuration change");
+                            _logger.LogDebug("Re-warming environment inspect cache after configuration change");
                             await GetEnvironmentDataAsync();
                             _logger.LogInformation("Environment inspect cache re-warmed successfully");
                         }
