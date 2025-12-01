@@ -1,12 +1,12 @@
 import { LitElement, css, html, customElement, property, repeat, when } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
-import { DebugViewModel } from "../api/types.gen";
+import { EnvironmentVariable } from "../api/types.gen";
 import { CultivEnvironmentInspectService } from "../api/sdk.gen";
 
 @customElement('environmentinspect-dashboard')
 export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitElement) {
 
-  @property({ type: Array }) environmentVariables: DebugViewModel[] = [];
+  @property({ type: Array }) environmentVariables: EnvironmentVariable[] = [];
   @property({ type: Boolean }) isLoading: boolean = true;
 
   render() {
