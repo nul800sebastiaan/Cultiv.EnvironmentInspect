@@ -22,6 +22,11 @@ jobs:
   setup:
     name: Setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
     outputs:
       semver: ${{ steps.set-version.outputs.version }}
 

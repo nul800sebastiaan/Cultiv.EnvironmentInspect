@@ -22,6 +22,11 @@ jobs:
   setup:
     name: Setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
     outputs:
       semver: ${{ steps.semantic.outputs.new_release_version }}
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
@@ -174,7 +179,7 @@ jobs:
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
 
-    - name: Push NuGet Package
+    - name: Push GitHub Package
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
     
