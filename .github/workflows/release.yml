@@ -1,5 +1,9 @@
 name: Build and Package
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PATH_TO_EXTENSION: "Cultiv.EnvironmentInspect"
   PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.DemoSite"
@@ -7,6 +11,12 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_to_nuget:
+        description: 'Publish to nuget.org'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   setup:
@@ -21,6 +31,9 @@ jobs:
         with:
           fetch-depth: 0
           filter: tree:0
+      
+      - name: Fetch all tags
+        run: git fetch --force --tags
         
       - name: Semantic Release
         id: semantic
@@ -36,6 +49,14 @@ jobs:
             @semantic-release/github
             conventional-changelog-conventionalcommits
 
+      - name: Check Release
+        run: |
+          if [ -z "${{ steps.semantic.outputs.new_release_version }}" ]; then
+            echo "::error::No release version generated. Ensure there are conventional commits since the last release."
+            exit 1
+          fi
+          echo "Release version: ${{ steps.semantic.outputs.new_release_version }}"
+
       - name: Echo the version
         run: |
           echo "New release version: '${{ steps.semantic.outputs.new_release_version }}'"
@@ -50,6 +71,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: setup
     timeout-minutes: 5
+    env:
+      MYGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
     steps:
     - uses: actions/checkout@v5
       with:
@@ -80,26 +103,11 @@ jobs:
           nuget-cache-${{ runner.os }}-nuget-
 
     - name: Update Version Files
-      working-directory: ${{ env.PATH_TO_EXTENSION }}
-      run: |
-        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/public/umbraco-package.json > temp.json && mv temp.json Client/public/umbraco-package.json
-        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/package.json > temp2.json && mv temp2.json Client/package.json
-
-        # Convert semantic version to numeric file version (e.g., 2.0.0-alpha.1 -> 2.0.0.1)
-        SEMVER="${{ needs.setup.outputs.semver }}"
-        if [[ $SEMVER == *"-"* ]]; then
-          BASE_VERSION=$(echo $SEMVER | cut -d'-' -f1)
-          PRERELEASE=$(echo $SEMVER | cut -d'-' -f2)
-          # Extract number from prerelease (e.g., alpha.1 -> 1, beta.2 -> 2)
-          PRERELEASE_NUM=$(echo $PRERELEASE | grep -o '[0-9]\+$' || echo "0")
-          FILE_VERSION="${BASE_VERSION}.${PRERELEASE_NUM}"
-        else
-          FILE_VERSION="${SEMVER}.0"
-        fi
-        
-        # Find and update csproj file
-        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" | head -1)
-        sed -i "s|<FileVersion>\$(FileVersionNumber)</FileVersion>|<FileVersion>$FILE_VERSION</FileVersion>|" "$CSPROJ_FILE"
+      id: update-version
+      uses: CrumpledDog/Crumpled.Umbraco.Package.Actions/update-version-files@main
+      with:
+        semver: ${{ needs.setup.outputs.semver }}
+        path-to-extension: ${{ env.PATH_TO_EXTENSION }}
 
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
@@ -130,19 +138,55 @@ jobs:
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         cd Client
-        npm run build        
+        npm run build
 
-    - name: Build sln
-      run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
+    - name: Build slnx
+      run: dotnet build ${{ github.workspace }}/*.slnx -c Release
 
     - name: Pack NuGet Package
       working-directory: ${{ env.PATH_TO_EXTENSION }}
-      run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }}
+      run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
     
-    - name: Login
+    - name: Install Package Validation Tool
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      run: dotnet tool install -g dotnet-validate --prerelease
+    
+    - name: Validate NuGet Package
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
+    
+    - name: Create GitHub Release
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ needs.setup.outputs.semver }}
+        name: v${{ needs.setup.outputs.semver }}
+        generate_release_notes: true
+        prerelease: ${{ contains(needs.setup.outputs.semver, '-') }}
+        body: |
+          ## Installation
+          
+          ```bash
+          ${{ contains(needs.setup.outputs.semver, '-') && format('dotnet add package Cultiv.EnvironmentInspect --version {0} --source https://nuget.pkg.github.com/nul800sebastiaan/index.json', needs.setup.outputs.semver) || format('dotnet add package Cultiv.EnvironmentInspect --version {0}', needs.setup.outputs.semver) }}
+          ```
+    
+    - name: Add GitHub Packages Source
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
 
     - name: Push NuGet Package
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
+    
+    - name: Push MyGet Package
+      if: needs.setup.outputs.new_release_published == 'true' && env.MYGET_API_KEY != ''
+      run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
+      
+    - name: Push to Nuget.org
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && startsWith(github.ref, 'refs/heads/release/') && !contains(needs.setup.outputs.semver, '-') }}
+      run: |
+        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+    
+    - name: Merge release branch to develop
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && startsWith(github.ref, 'refs/heads/release/') }}
+      run: .github/scripts/merge-to-develop.sh "${{ needs.setup.outputs.semver }}"
