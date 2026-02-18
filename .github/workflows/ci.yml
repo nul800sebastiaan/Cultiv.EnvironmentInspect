@@ -144,11 +144,17 @@ jobs:
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         cd Client
-        npm run build        
+        npm run build
 
-    - name: Build sln
-      run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
+    - name: Build slnx
+      run: dotnet build ${{ github.workspace }}/*.slnx -c Release
 
     - name: Pack NuGet Package
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
+    
+    - name: Install Package Validation Tool
+      run: dotnet tool install -g dotnet-validate --prerelease
+    
+    - name: Validate NuGet Package
+      run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
