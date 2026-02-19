@@ -255,6 +255,27 @@ This will completely hide:
 - **All configuration values from files matching `.*Development.*`** (e.g., appsettings.Development.json)
 - **All configuration values from Azure Key Vault**
 
+**Combining Properties** - Only exclude development JSON files:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^\\$schema$",
+      { "ProviderType": "JsonConfigurationProvider", "ProviderSource": ".*Development.*" }
+    ]
+  }
+}
+```
+
+This will hide:
+- Any keys starting with `APPSETTING_`
+- The `$schema` property
+- **Only** values from JSON files (JsonConfigurationProvider) **AND** matching `.*Development.*`
+
+Note: Without combining properties, `{ "ProviderSource": ".*Development.*" }` would match ANY provider with Development in the source, not just JSON files.
+
 ### Production-Ready Example
 
 Comprehensive configuration for a production environment:
