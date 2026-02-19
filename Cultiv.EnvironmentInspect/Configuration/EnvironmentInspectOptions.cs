@@ -6,9 +6,11 @@ namespace Cultiv.EnvironmentInspect.Configuration;
 public class EnvironmentInspectOptions
 {
     /// <summary>
-    /// List of regex patterns for configuration keys to exclude entirely
+    /// List of exclusion rules for configuration keys/providers to exclude entirely.
+    /// Can be either strings (for key patterns) or objects (for provider-based exclusion).
+    /// Note: Binding is handled manually in the composer.
     /// </summary>
-    public List<string> Exclude { get; set; } = new();
+    public List<ExclusionRule> Exclude { get; set; } = new();
 
     /// <summary>
     /// List of redaction rules to apply to configuration values
@@ -109,4 +111,30 @@ public enum RedactionMode
     /// Apply custom redaction using RedactionOptions
     /// </summary>
     Advanced
+}
+
+/// <summary>
+/// A rule for excluding configuration keys or providers
+/// </summary>
+public class ExclusionRule
+{
+    /// <summary>
+    /// Regex pattern for matching configuration keys
+    /// </summary>
+    public string? Key { get; set; }
+
+    /// <summary>
+    /// Regex pattern for matching the full provider name
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// Regex pattern for matching provider type (class name)
+    /// </summary>
+    public string? ProviderType { get; set; }
+
+    /// <summary>
+    /// Regex pattern for matching provider source (file name or identifier)
+    /// </summary>
+    public string? ProviderSource { get; set; }
 }

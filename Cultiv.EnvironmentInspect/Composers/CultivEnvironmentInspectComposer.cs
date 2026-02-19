@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi;
 
 using Swashbuckle.AspNetCore.SwaggerGen;
@@ -23,9 +24,37 @@ namespace Cultiv.EnvironmentInspect.Composers
     {
         public void Compose(IUmbracoBuilder builder)
         {
-            // Register configuration options
+            // Register configuration options with post-configuration to handle hybrid Exclude array
             builder.Services.Configure<EnvironmentInspectOptions>(
                 builder.Config.GetSection("EnvironmentInspect"));
+            
+            // Post-configure to manually bind the Exclude array
+            builder.Services.PostConfigure<EnvironmentInspectOptions>(options =>
+            {
+                var config = builder.Config;
+                var excludeSection = config.GetSection("EnvironmentInspect:Exclude");
+                
+                if (excludeSection.Exists())
+                {
+                    options.Exclude.Clear();
+                    foreach (var child in excludeSection.GetChildren())
+                    {
+                        // Check if it's a simple value (string) or a complex object
+                        if (!string.IsNullOrEmpty(child.Value) && !child.GetChildren().Any())
+                        {
+                            // It's a string value
+                            options.Exclude.Add(new ExclusionRule { Key = child.Value });
+                        }
+                        else
+                        {
+                            // It's an object with properties
+                            var rule = new ExclusionRule();
+                            child.Bind(rule);
+                            options.Exclude.Add(rule);
+                        }
+                    }
+                }
+            });
 
             // Register the environment inspect service
             builder.Services.AddSingleton<IEnvironmentInspectService, EnvironmentInspectService>();
