@@ -6,7 +6,7 @@
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Exclude` | `string[]` | `[]` | Regex patterns for keys to exclude entirely |
+| `Exclude` | `(string \| ExclusionRule)[]` | `[]` | Patterns or rules for keys/providers to exclude entirely |
 | `Redact` | `RedactionRule[]` | `[]` | Rules for redacting sensitive values |
 | `RedactionCharacter` | `string` | `•` | Character to use for redaction |
 | `PartialVisibleChars` | `int` | `4` | Number of characters to show at start/end in Partial mode |
@@ -14,7 +14,9 @@
 
 ### Exclusion Patterns
 
-The `Exclude` array accepts regex patterns to completely remove configuration keys from the display. These keys won't appear in the dashboard at all.
+The `Exclude` array accepts both simple string patterns (for keys) and object rules (for provider-based exclusion). These items won't appear in the dashboard at all.
+
+**String format** - Regex patterns for configuration keys:
 
 ```json
 "Exclude": [
@@ -24,6 +26,46 @@ The `Exclude` array accepts regex patterns to completely remove configuration ke
   "^\\$schema$"              // Hide the $schema property
 ]
 ```
+
+**Object format** - Match by provider properties:
+
+```json
+"Exclude": [
+  { "ProviderSource": ".*Development.*" },                    // Exclude all Development config files
+  { "ProviderType": "AzureKeyVaultConfigurationProvider" },  // Exclude all Azure Key Vault values
+  { "ProviderType": ".*Azure.*" }                            // Exclude all Azure-related providers
+]
+```
+
+**Mixed format** - Combine both approaches:
+
+```json
+"Exclude": [
+  "^APPSETTING_",
+  "^\\$schema$",
+  { "ProviderSource": ".*Development.*" },
+  { "ProviderType": "AzureKeyVaultConfigurationProvider" }
+]
+```
+
+**Exclusion Rule Properties:**
+
+| Property | Description |
+|----------|-------------|
+| `Key` | Regex pattern to match configuration keys |
+| `Provider` | Regex pattern to match full provider name |
+| `ProviderType` | Regex pattern to match provider type (class name) |
+| `ProviderSource` | Regex pattern to match provider source (file name) |
+
+**Combining Properties** - Multiple properties can be combined using AND logic:
+
+```json
+"Exclude": [
+  { "ProviderType": "JsonConfigurationProvider", "ProviderSource": ".*Development.*" }
+]
+```
+
+This will exclude **only** values from `JsonConfigurationProvider` **AND** from files matching `.*Development.*` (like appsettings.Development.json). Both conditions must match for the exclusion to apply.
 
 ### Redaction Rules
 
@@ -189,6 +231,29 @@ Hide internal configuration and redact all passwords:
   }
 }
 ```
+
+### Provider-Based Exclusion Example
+
+Hide all values from development configuration files and Azure Key Vault:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^\\$schema$",
+      { "ProviderSource": ".*Development.*" },
+      { "ProviderType": "AzureKeyVaultConfigurationProvider" }
+    ]
+  }
+}
+```
+
+This will completely hide:
+- Any keys starting with `APPSETTING_`
+- The `$schema` property
+- **All configuration values from files matching `.*Development.*`** (e.g., appsettings.Development.json)
+- **All configuration values from Azure Key Vault**
 
 ### Production-Ready Example
 

@@ -82,11 +82,6 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         // Get current options
         var options = _options.CurrentValue;
 
-        // Compile regex patterns for exclusions
-        var excludePatterns = options.Exclude
-            .Select(pattern => new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.Compiled))
-            .ToList();
-
         // Adapted from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Abstractions/src/ConfigurationRootExtensions.cs#L36
         void RecurseChildren(IEnumerable<IConfigurationSection> children)
         {
@@ -123,7 +118,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         RecurseChildren(configurationRoot.GetChildren().Where(x => !string.IsNullOrEmpty(x.Path)));
 
         // Apply exclusions
-        environmentVariables = ApplyExclusions(environmentVariables, excludePatterns, options);
+        environmentVariables = ApplyExclusions(environmentVariables, options);
 
         // Apply redactions
         environmentVariables = ApplyRedactions(environmentVariables, options);
@@ -171,13 +166,92 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
     private List<EnvironmentVariable> ApplyExclusions(
         List<EnvironmentVariable> variables, 
-        List<Regex> excludePatterns, 
         EnvironmentInspectOptions options)
     {
         return variables.Where(variable =>
         {
-            // Check if key matches any exclusion pattern
-            if (excludePatterns.Any(pattern => pattern.IsMatch(variable.Key)))
+            // Check if variable matches any exclusion rule
+            var matchesExclusion = options.Exclude.Any(rule =>
+            {
+                var matches = new List<bool>();
+
+                // Check if rule matches by key pattern
+                if (!string.IsNullOrEmpty(rule.Key))
+                {
+                    try
+                    {
+                        var regex = new Regex(rule.Key, RegexOptions.IgnoreCase);
+                        matches.Add(regex.IsMatch(variable.Key));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Invalid regex pattern in exclusion rule Key: {Pattern}", rule.Key);
+                        return false;
+                    }
+                }
+
+                // Check if rule matches by provider
+                if (!string.IsNullOrEmpty(rule.Provider) && !string.IsNullOrEmpty(variable.Provider))
+                {
+                    try
+                    {
+                        var regex = new Regex(rule.Provider, RegexOptions.IgnoreCase);
+                        matches.Add(regex.IsMatch(variable.Provider));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Invalid regex pattern in exclusion rule Provider: {Pattern}", rule.Provider);
+                        return false;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(rule.Provider))
+                {
+                    matches.Add(false);
+                }
+
+                // Check if rule matches by provider type
+                if (!string.IsNullOrEmpty(rule.ProviderType) && !string.IsNullOrEmpty(variable.ProviderType))
+                {
+                    try
+                    {
+                        var regex = new Regex(rule.ProviderType, RegexOptions.IgnoreCase);
+                        matches.Add(regex.IsMatch(variable.ProviderType));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Invalid regex pattern in exclusion rule ProviderType: {Pattern}", rule.ProviderType);
+                        return false;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(rule.ProviderType))
+                {
+                    matches.Add(false);
+                }
+
+                // Check if rule matches by provider source
+                if (!string.IsNullOrEmpty(rule.ProviderSource) && !string.IsNullOrEmpty(variable.ProviderSource))
+                {
+                    try
+                    {
+                        var regex = new Regex(rule.ProviderSource, RegexOptions.IgnoreCase);
+                        matches.Add(regex.IsMatch(variable.ProviderSource));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Invalid regex pattern in exclusion rule ProviderSource: {Pattern}", rule.ProviderSource);
+                        return false;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(rule.ProviderSource))
+                {
+                    matches.Add(false);
+                }
+
+                // All specified patterns must match (AND logic)
+                return matches.Count > 0 && matches.All(m => m);
+            });
+
+            if (matchesExclusion)
             {
                 return false;
             }
