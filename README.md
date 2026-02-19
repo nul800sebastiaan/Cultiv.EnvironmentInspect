@@ -1,4 +1,4 @@
-# Cultiv.EnvironmentInspect &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![NuGet version (Cultiv.EnvironmentInspect)](https://img.shields.io/nuget/v/Cultiv.EnvironmentInspect.svg)](https://www.nuget.org/packages/Cultiv.EnvironmentInspect/) [![Twitter](https://img.shields.io/twitter/follow/cultiv.svg?style=social&label=Follow)](https://twitter.com/intent/follow?screen_name=cultiv)
+# Cultiv.EnvironmentInspect &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![NuGet version (Cultiv.EnvironmentInspect)](https://img.shields.io/nuget/v/Cultiv.EnvironmentInspect.svg)](https://www.nuget.org/packages/Cultiv.EnvironmentInspect/) [![CI](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/actions/workflows/ci.yml/badge.svg)](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/actions)
 
 **v1 is for Umbraco v9 to v13**  
 **v2 is for Umbraco v17+**
@@ -34,9 +34,17 @@ Or via the NuGet Package Manager Console:
 Install-Package Cultiv.EnvironmentInspect
 ```
 
-## Quick Configuration
+## Usage
 
-Add the `EnvironmentInspect` section to your `appsettings.json`:
+1. Install the package
+2. Access the dashboard in **Settings → Environment Inspector**
+3. View all configuration values and their sources
+
+That's it! The package works out of the box with no configuration required.
+
+## Configuration (Optional)
+
+If you need to exclude or redact sensitive values, add the `EnvironmentInspect` section to your `appsettings.json`:
 
 ```json
 {
@@ -92,13 +100,6 @@ Add the `EnvironmentInspect` section to your `appsettings.json`:
 - Keys matching `.*Secret.*`: `••••••••` 🔒
 
 For detailed configuration options, see the [Configuration Guide](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONFIGURATION.md).
-
-## Usage
-
-1. Install the package
-2. Access the dashboard in **Settings → Environment Inspector**
-3. View all configuration values and their sources
-4. Configure exclusions and redactions in `appsettings.json` as needed
 
 ## Documentation
 
