@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
+    <NoWarn>$(NoWarn);NU5118</NoWarn>
     
     <!-- Symbol file configuration -->
     <DebugType>portable</DebugType>
@@ -43,6 +44,8 @@
   <ItemGroup>
     <!-- Dont include the client folder as part of packaging nuget build -->
     <Content Remove="Client\**" />
+    <!-- Remove schema from default content items so we can explicitly control packaging -->
+    <Content Remove="appsettings-schema.Cultiv.EnvironmentInspect.json" />
 
     <!-- However make the Umbraco-package.json included for dotnet pack or nuget package and visible to the solution -->
     <None Include="Client\public\umbraco-package.json" Pack="false" />
@@ -53,6 +56,8 @@
 	  <None Include="../LICENSE" Pack="true" PackagePath="" />
 	  <None Include="../README.md" Pack="true" PackagePath="" />
 	  <None Include="../logo.png" Pack="true" PackagePath="" />
+	  <Content Include="buildTransitive\**" PackagePath="buildTransitive" />
+	  <Content Include="appsettings-schema.Cultiv.EnvironmentInspect.json" PackagePath="" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,468 @@
+# Configuration Guide
+
+## Configuration Reference
+
+### Configuration Options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `Exclude` | `string[]` | `[]` | Regex patterns for keys to exclude entirely |
+| `Redact` | `RedactionRule[]` | `[]` | Rules for redacting sensitive values |
+| `RedactionCharacter` | `string` | `•` | Character to use for redaction |
+| `PartialVisibleChars` | `int` | `4` | Number of characters to show at start/end in Partial mode |
+| `ExcludeEmptyValues` | `bool` | `false` | Whether to exclude keys with null or empty values |
+
+### Exclusion Patterns
+
+The `Exclude` array accepts regex patterns to completely remove configuration keys from the display. These keys won't appear in the dashboard at all.
+
+```json
+"Exclude": [
+  "^APPSETTING_",            // Exclude environment variables starting with APPSETTING_
+  "^AZURE_",                 // Exclude Azure-related environment variables
+  "^EnvironmentInspect",     // Hide the EnvironmentInspect config itself
+  "^\\$schema$"              // Hide the $schema property
+]
+```
+
+### Redaction Rules
+
+The `Redact` array defines rules for masking sensitive values. Rules are processed in order, and the **first matching rule is applied**.
+
+#### Redaction Modes
+
+**1. Full Redaction** - Completely masks the value:
+```json
+{
+  "Key": ".*Password$",
+  "RedactionMode": "Full"
+}
+```
+Result: `••••••••`
+
+**2. Partial Redaction** - Shows start and end characters:
+```json
+{
+  "Key": "Umbraco:CMS:Global:Id",
+  "RedactionMode": "Partial"
+}
+```
+Result: `2ebd••••eac5` (shows first 4 and last 4 chars by default)
+
+**3. Advanced Redaction** - Custom redaction with options:
+
+*Option A: Keep specific characters*
+```json
+{
+  "Key": "Umbraco:CMS:Unattended:UnattendedUserPassword",
+  "RedactionMode": "Advanced",
+  "RedactionOptions": {
+    "KeepFirst": 2,
+    "KeepLast": 2
+  }
+}
+```
+Input: `1234567890`  
+Result: `12••••90`
+
+*Option B: Extract and redact nested keys (for connection strings)*
+```json
+{
+  "Key": "ConnectionStrings:.*",
+  "RedactionMode": "Advanced",
+  "RedactionOptions": {
+    "Keys": [ "Password", "PWD" ],
+    "KeepFirst": 2,
+    "KeepLast": 2
+  }
+}
+```
+Input: `Server=blaa.database.windows.net,1433;Database=22sa1bmi2ye;User ID=ypad0yvmodr@blaa;Password=7R9K8sS*@G2$JmpeQs($;Connection Timeout=120;`  
+Result: `Server=blaa.database.windows.net,1433;Database=22sa1bmi2ye;User ID=ypad0yvmodr@blaa;Password=7R••••($;Connection Timeout=120;`
+
+#### Provider-Based Redaction
+
+Redact all values from specific configuration providers using provider matching properties. You can use `Provider` (full name), `ProviderType` (class name), or `ProviderSource` (file name).
+
+**Understanding Provider Names**
+
+ASP.NET Core configuration providers have verbose names that include the class name and additional context. Here are some real examples:
+
+- `JsonConfigurationProvider for 'appsettings.json' (Optional)`
+- `JsonConfigurationProvider for 'appsettings.Development.json' (Optional)*`
+- `EnvironmentVariablesConfigurationProvider`
+- `AzureKeyVaultConfigurationProvider`
+- `CommandLineConfigurationProvider`
+
+The asterisk `*` suffix indicates the active provider for a key when multiple providers define the same key.
+
+**Matching Options**
+
+**Option 1: Match by source file (simplest)**
+
+```json
+{
+  "ProviderSource": "appsettings.Development.json",
+  "RedactionMode": "Partial"
+}
+```
+
+Match all development configuration files:
+
+```json
+{
+  "ProviderSource": ".*Development.*",
+  "RedactionMode": "Partial"
+}
+```
+
+**Option 2: Match by provider type**
+
+```json
+{
+  "ProviderType": "AzureKeyVaultConfigurationProvider",
+  "RedactionMode": "Full"
+}
+```
+
+Match all Azure-related providers:
+
+```json
+{
+  "ProviderType": ".*Azure.*",
+  "RedactionMode": "Full"
+}
+```
+
+**Option 3: Match by full provider name (for complete control)**
+
+```json
+{
+  "Provider": "JsonConfigurationProvider for 'appsettings\\.Development\\.json'.*",
+  "RedactionMode": "Partial"
+}
+```
+
+**Option 4: Combine multiple properties (AND logic)**
+
+All specified properties must match:
+
+```json
+{
+  "ProviderType": "JsonConfigurationProvider",
+  "ProviderSource": ".*Development.*",
+  "RedactionMode": "Partial"
+}
+```
+
+### Visual Indicators
+
+The dashboard displays emoji indicators for redacted values:
+
+| Emoji | Mode | Description |
+|-------|------|-------------|
+| 🔒 | Full | Value is completely redacted |
+| 👁️ | Partial | Value is partially visible |
+| 🔐 | Advanced | Value uses custom redaction rules |
+
+## Configuration Examples
+
+### Basic Example
+
+Hide internal configuration and redact all passwords:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^AZURE_",
+      "^EnvironmentInspect",
+      "^\\$schema$"
+    ],
+    "Redact": [
+      {
+        "Key": ".*Password$",
+        "RedactionMode": "Full"
+      }
+    ]
+  }
+}
+```
+
+### Production-Ready Example
+
+Comprehensive configuration for a production environment:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^AZURE_",
+      "^EnvironmentInspect",
+      "^\\$schema$"
+    ],
+    "Redact": [
+      {
+        "Key": "Umbraco:CMS:Unattended:UnattendedUserPassword",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": "ConnectionStrings:.*",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "Password", "PWD", "User Id", "UID" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": ".*Password$",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*Secret.*",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*ApiKey.*",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*Token.*",
+        "RedactionMode": "Full"
+      },
+      {
+        "ProviderType": "AzureKeyVaultConfigurationProvider",
+        "RedactionMode": "Full"
+      },
+      {
+        "ProviderType": ".*Azure.*",
+        "RedactionMode": "Full"
+      }
+    ],
+    "RedactionCharacter": "•",
+    "PartialVisibleChars": 4,
+    "ExcludeEmptyValues": false
+  }
+}
+```
+
+### Advanced Connection String Redaction
+
+Extract and redact only sensitive parts of connection strings:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Redact": [
+      {
+        "Key": "ConnectionStrings:.*",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ 
+            "Password", 
+            "PWD", 
+            "User Id", 
+            "UID",
+            "password",
+            "pwd",
+            "user id",
+            "uid"
+          ],
+          "KeepFirst": 3,
+          "KeepLast": 3
+        }
+      }
+    ]
+  }
+}
+```
+
+**Input:**
+```
+Server=myserver.database.windows.net;Database=mydb;User ID=myuser;Password=MyP@ssw0rd123;
+```
+
+**Output:**
+```
+Server=myserver.database.windows.net;Database=mydb;User ID=myu•••ser;Password=MyP•••123;
+```
+
+### Provider-Based Redaction Examples
+
+Redact all values from specific configuration providers:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Redact": [
+      {
+        "ProviderType": "AzureKeyVaultConfigurationProvider",
+        "RedactionMode": "Full"
+      },
+      {
+        "ProviderType": "AzureAppConfigurationProvider",
+        "RedactionMode": "Full"
+      },
+      {
+        "ProviderType": "EnvironmentVariablesConfigurationProvider",
+        "RedactionMode": "Partial"
+      },
+      {
+        "ProviderSource": ".*Development.*",
+        "RedactionMode": "Partial"
+      }
+    ]
+  }
+}
+```
+
+### Development vs Production Configuration
+
+**appsettings.json** (base configuration):
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^AZURE_",
+      "^EnvironmentInspect",
+      "^\\$schema$"
+    ],
+    "RedactionCharacter": "•",
+    "PartialVisibleChars": 4
+  }
+}
+```
+
+**appsettings.Production.json** (production overrides):
+```json
+{
+  "EnvironmentInspect": {
+    "Redact": [
+      {
+        "Key": ".*Password$",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*Secret.*",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": "ConnectionStrings:.*",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "Password", "PWD", "User Id" ]
+        }
+      }
+    ]
+  }
+}
+```
+
+## Regex Pattern Tips
+
+### Common Patterns
+
+- `^APPSETTING_` - Starts with "APPSETTING_"
+- `.*Password$` - Ends with "Password"
+- `.*Secret.*` - Contains "Secret"
+- `^ConnectionStrings:` - Starts with "ConnectionStrings:"
+- `Umbraco:CMS:.*:.*Password` - Umbraco CMS passwords at any depth
+
+### Escaping Special Characters
+
+In JSON, backslashes must be escaped:
+
+- `.` → `\\.` (literal dot)
+- `$` → `\\$` (literal dollar sign)
+- `^` → `^` (start of string - no escape needed)
+
+### Testing Regex
+
+Use [regex101.com](https://regex101.com/) with the "ECMAScript (JavaScript)" flavor to test your patterns.
+
+## Rule Priority
+
+Redaction rules are processed **in order**, and the **first matching rule is applied**. Place more specific rules before general ones:
+
+**✅ Correct Order:**
+```json
+{
+  "Redact": [
+    {
+      "Key": "Umbraco:CMS:Unattended:UnattendedUserPassword",
+      "RedactionMode": "Partial"
+    },
+    {
+      "Key": ".*Password$",
+      "RedactionMode": "Full"
+    }
+  ]
+}
+```
+
+**❌ Incorrect Order:**
+```json
+{
+  "Redact": [
+    {
+      "Key": ".*Password$",
+      "RedactionMode": "Full"
+    },
+    {
+      "Key": "Umbraco:CMS:Unattended:UnattendedUserPassword",
+      "RedactionMode": "Partial"
+    }
+  ]
+}
+```
+
+In the incorrect example, the specific Umbraco password rule will never be applied because `.*Password$` matches first.
+
+## Visual Indicators
+
+The dashboard displays emoji indicators for redacted values:
+
+| Emoji | Mode | Description |
+|-------|------|-------------|
+| 🔒 | Full | Value is completely redacted |
+| 👁️ | Partial | Value is partially visible |
+| 🔐 | Advanced | Value uses custom redaction rules |
+
+## Best Practices
+
+1. **Test in Development**: Verify your exclusion and redaction rules work as expected before deploying to production
+2. **Document Your Patterns**: Add comments in your configuration to explain complex regex patterns
+3. **Review Regularly**: As your application grows, review and update your configuration rules
+4. **Use Environment-Specific Files**: Apply stricter redaction in production environments
+5. **Monitor Performance**: If you have thousands of configuration keys, use exclusion patterns to reduce the dataset
+6. **Validate Regex**: Invalid regex patterns will be logged as warnings but won't break the application
+
+## Troubleshooting
+
+### Rule Not Matching
+
+- Check regex syntax - use [regex101.com](https://regex101.com/)
+- Remember to escape backslashes in JSON: `\.` becomes `\\.`
+- Check rule order - a previous rule may be matching first
+
+### Too Much/Too Little Visible
+
+Adjust the `PartialVisibleChars` setting or use `Advanced` mode with `KeepFirst`/`KeepLast` options.
+
+### Performance Issues
+
+- Use `Exclude` patterns to remove large sections of configuration
+- Set `ExcludeEmptyValues: true` to reduce empty entries
+- Cache is automatically cleared when configuration changes
+
+## Support
+
+For issues, questions, or contributions, visit the [GitHub repository](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect).

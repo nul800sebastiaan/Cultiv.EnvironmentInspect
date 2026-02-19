@@ -19,6 +19,19 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     return this.displayedCount < this.environmentVariables.length;
   }
 
+  getRedactionEmoji(redactedMode?: string | null): string {
+    switch (redactedMode) {
+      case 'Full':
+        return '🔒'; // Full redaction - locked
+      case 'Partial':
+        return '👁️'; // Partial redaction - eye (partial visibility)
+      case 'Advanced':
+        return '🔐'; // Advanced redaction - locked with key (custom rules)
+      default:
+        return ''; // No redaction
+    }
+  }
+
   render() {
     return html`
       ${when(this.isLoading, 
@@ -40,10 +53,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   (item) => item.key,
                   (item) => html`
                     <uui-table-row>
-                      <uui-table-cell clip-text="">${item.key}</uui-table-cell>
-                      <uui-table-cell clip-text="">
+                      <uui-table-cell class="key-cell">${item.key}</uui-table-cell>
+                      <uui-table-cell class="value-cell">
                         <em style="font-size: 0.8em">${item.provider}</em>
                         <br/>
+                        ${when(item.redactedMode, () => html`
+                          <span style="margin-right: 0.25rem;" title="Redacted: ${item.redactedMode}">${this.getRedactionEmoji(item.redactedMode)}</span>
+                        `)}
                         ${item.value}
                       </uui-table-cell>
                     </uui-table-row>
@@ -146,6 +162,14 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         font-size: 0.9em;
         background-color: var(--uui-color-surface);
         border-top: 1px solid var(--uui-color-border);
+      }
+
+      uui-table-cell.key-cell,
+      uui-table-cell.value-cell {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        vertical-align: top;
       }
     `,
   ];

@@ -13,6 +13,7 @@ using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Api.Common.OpenApi;
 using Umbraco.Cms.Core.Notifications;
 
+using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.NotificationHandlers;
 using Cultiv.EnvironmentInspect.Services;
 
@@ -22,6 +23,10 @@ namespace Cultiv.EnvironmentInspect.Composers
     {
         public void Compose(IUmbracoBuilder builder)
         {
+            // Register configuration options
+            builder.Services.Configure<EnvironmentInspectOptions>(
+                builder.Config.GetSection("EnvironmentInspect"));
+
             // Register the environment inspect service
             builder.Services.AddSingleton<IEnvironmentInspectService, EnvironmentInspectService>();
             builder.Services.AddSingleton<IOperationIdHandler, CustomOperationHandler>();
