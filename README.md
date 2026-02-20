@@ -5,7 +5,7 @@
 
 Cultiv Environment Inspector installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.
 
-For example, we can see some of the values here are coming from `appsetting.json` and `appsetting.Development.json`. 
+For example, we can see some of the values here are coming from `appsetting.json` and from Umbraco Cloud Environment variables. 
 
 ![Screenshot with an example of some variables, values and their sources](http://raw.githubusercontent.com/nul800sebastiaan/Cultiv.EnvironmentInspect/develop/v2/example.png)
 
