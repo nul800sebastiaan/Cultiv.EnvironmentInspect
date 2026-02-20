@@ -97,9 +97,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
-        key: nuget-cache-${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj*') }}
+        key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
         restore-keys: |
-          nuget-cache-${{ runner.os }}-nuget-
+          nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
 
     - name: Update Version Files
       id: update-version
