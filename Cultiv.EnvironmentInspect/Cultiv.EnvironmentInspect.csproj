@@ -29,6 +29,7 @@
     <ItemGroup>
         <PackageReference Include="Umbraco.Cms.Web.Website" Version="9.0.0" />
         <PackageReference Include="Umbraco.Cms.Web.BackOffice" Version="9.0.0" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.103" PrivateAssets="All" />
     </ItemGroup>
 
     <ItemGroup>
