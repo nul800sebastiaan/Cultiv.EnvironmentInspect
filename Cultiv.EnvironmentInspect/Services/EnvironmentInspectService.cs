@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Umbraco.Cms.Core.Cache;
 using Cultiv.EnvironmentInspect.Configuration;
+using Cultiv.EnvironmentInspect.Controllers;
 
 namespace Cultiv.EnvironmentInspect.Services;
 
@@ -65,12 +66,18 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         });
     }
 
-    public async Task<List<EnvironmentVariable>> GetEnvironmentDataAsync()
+    public async Task<EnvironmentInspectResponse> GetEnvironmentDataAsync()
     {
         // Use Umbraco's RuntimeCache with Get - cache indefinitely
-        return await Task.Run(() => (List<EnvironmentVariable>)_runtimeCache.Get(
+        var variables = await Task.Run(() => (List<EnvironmentVariable>)_runtimeCache.Get(
             CacheKey,
             () => BuildEnvironmentData())!);
+
+        return new EnvironmentInspectResponse
+        {
+            Variables = variables,
+            AzureWebAppAdvancedCopy = _options.CurrentValue.AzureWebAppAdvancedCopy
+        };
     }
 
     private List<EnvironmentVariable> BuildEnvironmentData()

@@ -1,8 +1,10 @@
+using Cultiv.EnvironmentInspect.Controllers;
+
 namespace Cultiv.EnvironmentInspect.Services;
 
 public interface IEnvironmentInspectService
 {
-    Task<List<EnvironmentVariable>> GetEnvironmentDataAsync();
+    Task<EnvironmentInspectResponse> GetEnvironmentDataAsync();
 }
 
 public class EnvironmentVariable
