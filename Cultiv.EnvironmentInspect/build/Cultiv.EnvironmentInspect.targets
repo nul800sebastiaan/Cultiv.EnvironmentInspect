@@ -17,22 +17,16 @@
 
     </Target>
 
-    <Target Name="CopyCultivEnvironmentInspectSchema" BeforeTargets="Build">
-        <Message Text="Copying Cultiv.EnvironmentInspect schema file to project root"  Importance="high" />
-        <Copy
-            SourceFiles="$(CultivEnvironmentInspectSchemaFile)"
-            DestinationFolder="$(MSBuildProjectDirectory)"
-            SkipUnchangedFiles="true" />
-    </Target>
+    <ItemGroup>
+        <UmbracoJsonSchemaFiles Include="$(CultivEnvironmentInspectSchemaFile)" />
+    </ItemGroup>
 
     <Target Name="ClearCultivEnvironmentInspectAssets" BeforeTargets="Clean">
         <ItemGroup>
             <CultivEnvironmentInspectDir Include="$(MSBuildProjectDirectory)\App_Plugins\Cultiv.EnvironmentInspect\" />
-            <CultivEnvironmentInspectSchemaFileClean Include="$(MSBuildProjectDirectory)\appsettings-schema.Cultiv.EnvironmentInspect.json" />
         </ItemGroup>
         <Message Text="Clear old Cultiv.EnvironmentInspect data"  Importance="high" />
         <RemoveDir Directories="@(CultivEnvironmentInspectDir)"  />
-        <Delete Files="@(CultivEnvironmentInspectSchemaFileClean)" />
     </Target>
 
 </Project>
