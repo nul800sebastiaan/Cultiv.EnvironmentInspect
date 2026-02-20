@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <CultivEnvironmentInspectContentFilesPath>$(MSBuildThisFileDirectory)..\App_Plugins\Cultiv.EnvironmentInspect\**\*.*</CultivEnvironmentInspectContentFilesPath>
+        <CultivEnvironmentInspectSchemaFile>$(MSBuildThisFileDirectory)..\appsettings-schema.Cultiv.EnvironmentInspect.json</CultivEnvironmentInspectSchemaFile>
     </PropertyGroup>
 
     <Target Name="CopyCultivEnvironmentInspectAssets" BeforeTargets="Build">
@@ -16,12 +17,22 @@
 
     </Target>
 
+    <Target Name="CopyCultivEnvironmentInspectSchema" BeforeTargets="Build">
+        <Message Text="Copying Cultiv.EnvironmentInspect schema file to project root"  Importance="high" />
+        <Copy
+            SourceFiles="$(CultivEnvironmentInspectSchemaFile)"
+            DestinationFolder="$(MSBuildProjectDirectory)"
+            SkipUnchangedFiles="true" />
+    </Target>
+
     <Target Name="ClearCultivEnvironmentInspectAssets" BeforeTargets="Clean">
         <ItemGroup>
             <CultivEnvironmentInspectDir Include="$(MSBuildProjectDirectory)\App_Plugins\Cultiv.EnvironmentInspect\" />
+            <CultivEnvironmentInspectSchemaFileClean Include="$(MSBuildProjectDirectory)\appsettings-schema.Cultiv.EnvironmentInspect.json" />
         </ItemGroup>
         <Message Text="Clear old Cultiv.EnvironmentInspect data"  Importance="high" />
         <RemoveDir Directories="@(CultivEnvironmentInspectDir)"  />
+        <Delete Files="@(CultivEnvironmentInspectSchemaFileClean)" />
     </Target>
 
 </Project>
