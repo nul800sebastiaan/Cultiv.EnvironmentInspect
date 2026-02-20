@@ -11,7 +11,7 @@ env:
 
 on:
   push:
-    branches: [ "develop/v2" ]
+    branches: [ "develop/v2", "release/v2" ]
   pull_request:
     branches:
     - develop/v2
