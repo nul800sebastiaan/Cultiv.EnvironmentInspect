@@ -10,7 +10,6 @@
 | `Redact` | `RedactionRule[]` | `[]` | Rules for redacting sensitive values |
 | `RedactionCharacter` | `string` | `•` | Character to use for redaction |
 | `PartialVisibleChars` | `int` | `4` | Number of characters to show at start/end in Partial mode |
-| `ExcludeEmptyValues` | `bool` | `false` | Whether to exclude keys with null or empty values |
 
 ### Exclusion Patterns
 
@@ -333,8 +332,7 @@ Comprehensive configuration for a production environment:
       }
     ],
     "RedactionCharacter": "•",
-    "PartialVisibleChars": 4,
-    "ExcludeEmptyValues": false
+    "PartialVisibleChars": 4
   }
 }
 ```
@@ -452,6 +450,66 @@ Redact all values from specific configuration providers:
 }
 ```
 
+### Umbraco Cloud Configuration
+
+Recommended configuration for Umbraco Cloud environments that protects sensitive keys commonly used in cloud deployments:
+
+```json
+{
+  "EnvironmentInspect": {
+    "Exclude": [
+      "^APPSETTING_",
+      "^AZURE_",
+      "^EnvironmentInspect",
+      "^\\$schema$"
+    ],
+    "Redact": [
+      {
+        "Key": "ConnectionStrings:umbracoDbDSN",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "Password", "PWD" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": ".*SharedAccessSignature.*",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "sig" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": ".*Secret(?!.*HeaderName).*",
+        "RedactionMode": "Partial"
+      },
+      {
+        "Key": ".*Password$",
+        "RedactionMode": "Partial"
+      },
+      {
+        "Key": "^WEBSITE_.*_KEY$",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": "Umbraco:Forms:FieldTypes:Recaptcha3:PrivateKey",
+        "RedactionMode": "Partial"
+      }
+    ]
+  }
+}
+```
+
+This configuration provides:
+- **Database security**: Redacts passwords in connection strings while showing server/database names
+- **Azure Blob Storage**: Only redacts the signature (`sig`) in SAS tokens, keeping other parameters visible
+- **Shared secrets**: Protects any configuration key containing "Secret" (except header names like `SHAREDSECRET:HEADERNAME`)
+- **Website keys**: Fully hides Azure App Service authentication keys (`WEBSITE_AUTH_ENCRYPTION_KEY`, `WEBSITE_AUTH_SIGNING_KEY`)
+- **Umbraco Forms**: Protects reCAPTCHA private keys with partial visibility
+
 ## Regex Pattern Tips
 
 ### Common Patterns
@@ -546,7 +604,7 @@ Adjust the `PartialVisibleChars` setting or use `Advanced` mode with `KeepFirst`
 ### Performance Issues
 
 - Use `Exclude` patterns to remove large sections of configuration
-- Set `ExcludeEmptyValues: true` to reduce empty entries
+- Use the "Exclude empty values" toggle in the dashboard UI to filter out empty entries
 - Cache is automatically cleared when configuration changes
 
 ## Support

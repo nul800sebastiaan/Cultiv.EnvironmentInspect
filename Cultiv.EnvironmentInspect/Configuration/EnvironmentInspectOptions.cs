@@ -26,11 +26,6 @@ public class EnvironmentInspectOptions
     /// Number of characters to show in Partial redaction mode (default: 4)
     /// </summary>
     public int PartialVisibleChars { get; set; } = 4;
-
-    /// <summary>
-    /// Whether to exclude keys with null or empty values (default: false)
-    /// </summary>
-    public bool ExcludeEmptyValues { get; set; } = false;
 }
 
 /// <summary>

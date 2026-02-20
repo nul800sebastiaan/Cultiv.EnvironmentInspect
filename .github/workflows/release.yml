@@ -185,13 +185,15 @@ jobs:
     
     - name: Push MyGet Package
       if: needs.setup.outputs.new_release_published == 'true' && env.MYGET_API_KEY != ''
-      run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
+      run: |
+        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
+        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
       
     - name: Push to Nuget.org
       if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && startsWith(github.ref, 'refs/heads/release/') && !contains(needs.setup.outputs.semver, '-') }}
       run: |
         dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
-    
+
     - name: Merge release branch to develop
       if: ${{ needs.setup.outputs.new_release_published == 'true' && startsWith(github.ref, 'refs/heads/release/') }}
       run: .github/scripts/merge-to-develop.sh "${{ needs.setup.outputs.semver }}"

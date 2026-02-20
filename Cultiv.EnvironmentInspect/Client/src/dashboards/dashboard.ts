@@ -9,14 +9,48 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @property({ type: Array }) environmentVariables: EnvironmentVariable[] = [];
   @property({ type: Boolean }) isLoading: boolean = true;
   @state() displayedCount: number = 50;
+  @state() excludeEmptyValues: boolean = true;
+  @state() onlyRedacted: boolean = false;
+  @state() replaceColonWithUnderscore: boolean = false;
   private readonly incrementSize: number = 50;
 
+  get filteredVariables(): EnvironmentVariable[] {
+    let filtered = this.environmentVariables;
+    
+    // Filter out empty values if enabled
+    if (this.excludeEmptyValues) {
+      filtered = filtered.filter(v => v.value != null && v.value !== '');
+    }
+    
+    // Filter to only redacted items if enabled
+    if (this.onlyRedacted) {
+      filtered = filtered.filter(v => v.redactedMode != null && v.redactedMode !== '');
+    }
+    
+    return filtered;
+  }
+
   get visibleVariables(): EnvironmentVariable[] {
-    return this.environmentVariables.slice(0, this.displayedCount);
+    return this.filteredVariables.slice(0, this.displayedCount);
   }
 
   get hasMore(): boolean {
-    return this.displayedCount < this.environmentVariables.length;
+    return this.displayedCount < this.filteredVariables.length;
+  }
+  
+  formatKey(key: string): string {
+    if (this.replaceColonWithUnderscore) {
+      return key.replace(/:/g, '__');
+    }
+    return key;
+  }
+  
+  async copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
   }
 
   getRedactionEmoji(redactedMode?: string | null): string {
@@ -41,6 +75,29 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           </div>
         `,
         () => html`
+          <div class="filter-container">
+            <div class="toggle-item">
+              <uui-toggle
+                ?checked=${this.excludeEmptyValues}
+                @change=${(e: CustomEvent) => this.excludeEmptyValues = (e.target as any).checked}>
+              </uui-toggle>
+              <label>Exclude empty values</label>
+            </div>
+            <div class="toggle-item">
+              <uui-toggle
+                ?checked=${this.onlyRedacted}
+                @change=${(e: CustomEvent) => this.onlyRedacted = (e.target as any).checked}>
+              </uui-toggle>
+              <label>Only redacted</label>
+            </div>
+            <div class="toggle-item">
+              <uui-toggle
+                ?checked=${this.replaceColonWithUnderscore}
+                @change=${(e: CustomEvent) => this.replaceColonWithUnderscore = (e.target as any).checked}>
+              </uui-toggle>
+              <label>Environment variable format (__ instead of :)</label>
+            </div>
+          </div>
           <div class="content-container" @scroll=${this.handleScroll}>          
             <uui-table>
               <uui-table-column style="width: 50%;"></uui-table-column>
@@ -53,7 +110,20 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   (item) => item.key,
                   (item) => html`
                     <uui-table-row>
-                      <uui-table-cell class="key-cell">${item.key}</uui-table-cell>
+                      <uui-table-cell class="key-cell">
+                        <div class="key-container">
+                          <span class="key-text">${this.formatKey(item.key!)}</span>
+                          <uui-button 
+                            compact
+                            look="secondary"
+                            label="Copy"
+                            title="Copy to clipboard"
+                            @click=${() => this.copyToClipboard(this.formatKey(item.key!))}
+                            class="copy-button">
+                            📋
+                          </uui-button>
+                        </div>
+                      </uui-table-cell>
                       <uui-table-cell class="value-cell">
                         <em style="font-size: 0.8em">${item.provider}</em>
                         <br/>
@@ -68,7 +138,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
             </uui-table>
           </div>
           <div class="counter-container">
-            Showing ${this.visibleVariables.length} of ${this.environmentVariables.length} items
+            Showing ${this.visibleVariables.length} of ${this.filteredVariables.length} items
             ${when(this.hasMore, () => html`
               <uui-button 
                 look="primary" 
@@ -98,12 +168,12 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   loadMore() {
     this.displayedCount = Math.min(
       this.displayedCount + this.incrementSize,
-      this.environmentVariables.length
+      this.filteredVariables.length
     );
   }
 
   loadAll() {
-    this.displayedCount = this.environmentVariables.length;
+    this.displayedCount = this.filteredVariables.length;
   }
 
   async firstUpdated() {
@@ -137,13 +207,55 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         padding: 4rem;
       }
 
+      .filter-container {
+        display: flex;
+        gap: 1.5rem;
+        padding: 1rem;
+        background-color: var(--uui-color-surface);
+        border-bottom: 1px solid var(--uui-color-border);
+        flex-wrap: wrap;
+      }
+
+      .toggle-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .toggle-item label {
+        cursor: pointer;
+        user-select: none;
+      }
+
       .content-container {
-        max-height: calc(100vh - 180px);
+        max-height: calc(100vh - 260px);
         overflow-y: auto;
       }
 
       uui-box {
         margin-bottom: 1rem;
+      }
+
+      .key-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: space-between;
+      }
+
+      .key-text {
+        flex: 1;
+        word-break: break-word;
+      }
+
+      .copy-button {
+        flex-shrink: 0;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      uui-table-row:hover .copy-button {
+        opacity: 1;
       }
 
       .load-more-container {

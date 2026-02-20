@@ -256,12 +256,6 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                 return false;
             }
 
-            // Check if we should exclude empty values
-            if (options.ExcludeEmptyValues && string.IsNullOrWhiteSpace(variable.Value))
-            {
-                return false;
-            }
-
             return true;
         }).ToList();
     }

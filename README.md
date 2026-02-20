@@ -87,8 +87,7 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
       }
     ],
     "RedactionCharacter": "•",
-    "PartialVisibleChars": 4,
-    "ExcludeEmptyValues": false
+    "PartialVisibleChars": 4
   }
 }
 ```
@@ -100,6 +99,14 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
 - Keys matching `.*Secret.*`: `••••••••` 🔒
 
 For detailed configuration options, see the [Configuration Guide](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONFIGURATION.md).
+
+### Umbraco Cloud
+
+For Umbraco Cloud deployments, see the [Umbraco Cloud configuration example](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONFIGURATION.md#umbraco-cloud-configuration) which includes recommended redaction rules for:
+- Azure Blob Storage SAS tokens
+- Website authentication keys
+- Database connection strings
+- Umbraco Forms reCAPTCHA keys
 
 ## Documentation
 
