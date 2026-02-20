@@ -1,5 +1,6 @@
 import { LitElement, css, html, customElement, property, repeat, when, state } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
+import { UMB_NOTIFICATION_CONTEXT } from '@umbraco-cms/backoffice/notification';
 import { EnvironmentVariable } from "../api/types.gen";
 import { CultivEnvironmentInspectService } from "../api/sdk.gen";
 
@@ -12,6 +13,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() excludeEmptyValues: boolean = true;
   @state() onlyRedacted: boolean = false;
   @state() replaceColonWithUnderscore: boolean = false;
+  @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
   private readonly incrementSize: number = 50;
 
   get filteredVariables(): EnvironmentVariable[] {
@@ -48,9 +50,34 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   async copyToClipboard(text: string) {
     try {
       await navigator.clipboard.writeText(text);
+      
+      const notificationContext = await this.getContext(UMB_NOTIFICATION_CONTEXT);
+      notificationContext?.peek('positive', { 
+        data: { 
+          headline: 'Copied!',
+          message: 'Value copied to clipboard' 
+        } 
+      });
     } catch (err) {
       console.error('Failed to copy text: ', err);
+      
+      const notificationContext = await this.getContext(UMB_NOTIFICATION_CONTEXT);
+      notificationContext?.peek('danger', { 
+        data: { 
+          headline: 'Copy Failed',
+          message: 'Could not copy to clipboard' 
+        } 
+      });
     }
+  }
+
+  generateAzureWebAppSnippet(key: string, value: string): string {
+    const formattedKey = this.formatKey(key);
+    return JSON.stringify({
+      name: formattedKey,
+      value: value,
+      slotSetting: false
+    }, null, 2);
   }
 
   getRedactionEmoji(redactedMode?: string | null): string {
@@ -104,6 +131,9 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
               <uui-table-head style="background-color: #1b264f; color: white">
                 <uui-table-head-cell>Environment value path</uui-table-head-cell>
                 <uui-table-head-cell>Value / Provider</uui-table-head-cell>
+                ${when(this.azureWebAppAdvancedCopy, () => html`
+                  <uui-table-head-cell style="width: 100px; text-align: center;">Azure</uui-table-head-cell>
+                `)}
               </uui-table-head>
               ${when(this.visibleVariables.length, () => html`
                 ${repeat(this.visibleVariables,
@@ -116,8 +146,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                           <uui-button 
                             compact
                             look="secondary"
-                            label="Copy"
-                            title="Copy to clipboard"
+                            label="Copy key"
+                            title="Copy key to clipboard"
                             @click=${() => this.copyToClipboard(this.formatKey(item.key!))}
                             class="copy-button">
                             📋
@@ -125,13 +155,38 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                         </div>
                       </uui-table-cell>
                       <uui-table-cell class="value-cell">
-                        <em style="font-size: 0.8em">${item.provider}</em>
-                        <br/>
-                        ${when(item.redactedMode, () => html`
-                          <span style="margin-right: 0.25rem;" title="Redacted: ${item.redactedMode}">${this.getRedactionEmoji(item.redactedMode)}</span>
-                        `)}
-                        ${item.value}
+                        <div class="value-container">
+                          <div class="value-content">
+                            <em style="font-size: 0.8em">${item.provider}</em>
+                            <br/>
+                            ${when(item.redactedMode, () => html`
+                              <span style="margin-right: 0.25rem;" title="Redacted: ${item.redactedMode}">${this.getRedactionEmoji(item.redactedMode)}</span>
+                            `)}
+                            <span class="value-text">${item.value}</span>
+                          </div>
+                          <uui-button 
+                            compact
+                            look="secondary"
+                            label="Copy value"
+                            title="Copy value to clipboard"
+                            @click=${() => this.copyToClipboard(item.value || '')}
+                            class="copy-button">
+                            📋
+                          </uui-button>
+                        </div>
                       </uui-table-cell>
+                      ${when(this.azureWebAppAdvancedCopy, () => html`
+                        <uui-table-cell class="azure-cell">
+                          <uui-button 
+                            compact
+                            look="primary"
+                            label="Copy Azure snippet"
+                            title="Copy as Azure Web App JSON snippet"
+                            @click=${() => this.copyToClipboard(this.generateAzureWebAppSnippet(item.key!, item.value || ''))}>
+                            ☁️
+                          </uui-button>
+                        </uui-table-cell>
+                      `)}
                     </uui-table-row>
                 `)}
               `)}
@@ -180,7 +235,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     try {
       const { data } = await this.getData();
       if (data) {
-        this.environmentVariables = data;
+        this.environmentVariables = data.variables || [];
+        this.azureWebAppAdvancedCopy = data.azureWebAppAdvancedCopy || false;
       }
     } catch (e) {
       // Optionally handle error
@@ -246,6 +302,27 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       .key-text {
         flex: 1;
         word-break: break-word;
+      }
+
+      .value-container {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        justify-content: space-between;
+      }
+
+      .value-content {
+        flex: 1;
+        word-break: break-word;
+      }
+
+      .value-text {
+        word-break: break-word;
+      }
+
+      .azure-cell {
+        text-align: center;
+        vertical-align: middle !important;
       }
 
       .copy-button {

@@ -22,9 +22,15 @@ namespace Cultiv.EnvironmentInspect.Controllers
 
         [HttpGet("getenvironment")]
         [MapToApiVersion("1.0")]
-        public async Task<List<EnvironmentVariable>> GetEnvironment()
+        public async Task<EnvironmentInspectResponse> GetEnvironment()
         {
             return await _environmentService.GetEnvironmentDataAsync();
         }
+    }
+
+    public class EnvironmentInspectResponse
+    {
+        public List<EnvironmentVariable> Variables { get; set; } = new();
+        public bool AzureWebAppAdvancedCopy { get; set; }
     }
 }

@@ -26,6 +26,11 @@ public class EnvironmentInspectOptions
     /// Number of characters to show in Partial redaction mode (default: 4)
     /// </summary>
     public int PartialVisibleChars { get; set; } = 4;
+
+    /// <summary>
+    /// Enable Azure Web App advanced copy feature with JSON snippet generation (default: false)
+    /// </summary>
+    public bool AzureWebAppAdvancedCopy { get; set; } = false;
 }
 
 /// <summary>
