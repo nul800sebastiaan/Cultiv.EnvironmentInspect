@@ -1,5 +1,9 @@
 name: Verify Build
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PATH_TO_EXTENSION: "Cultiv.EnvironmentInspect"
   PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.DemoSite"
@@ -7,7 +11,7 @@ env:
 
 on:
   push:
-    branches: [ "develop/v2" ]
+    branches: [ "develop/v2", "release/v2" ]
   pull_request:
     branches:
     - develop/v2
@@ -18,14 +22,22 @@ jobs:
   setup:
     name: Setup
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      packages: write
     outputs:
-      semver: ${{ steps.semantic.outputs.new_release_version }}
+      semver: ${{ steps.set-version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-        
+
+      - name: Fetch all tags
+        run: git fetch --force --tags
+          
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@v6
@@ -40,8 +52,26 @@ jobs:
             @semantic-release/github
             conventional-changelog-conventionalcommits
 
+      - name: Set Version
+        id: set-version
+        run: |
+          if [ -n "${{ steps.semantic.outputs.new_release_version }}" ]; then
+            echo "version=${{ steps.semantic.outputs.new_release_version }}" >> $GITHUB_OUTPUT
+          else
+            # Get the latest tag from git
+            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            if [ -n "$LATEST_TAG" ]; then
+              # Remove 'v' prefix if present
+              LATEST_VERSION=${LATEST_TAG#v}
+              echo "version=${LATEST_VERSION}-dev.${{ github.run_number }}" >> $GITHUB_OUTPUT
+            else
+              echo "version=0.1.0-dev.${{ github.run_number }}" >> $GITHUB_OUTPUT
+            fi
+          fi
+
       - name: Echo the version
         run: |
+          echo "Version to use: '${{ steps.set-version.outputs.version }}'"
           echo "New release version: '${{ steps.semantic.outputs.new_release_version }}'"
           echo "New release major: '${{ steps.semantic.outputs.new_release_major_version }}'"
           echo "New release minor: '${{ steps.semantic.outputs.new_release_minor_version }}'"
@@ -84,26 +114,11 @@ jobs:
           nuget-cache-${{ runner.os }}-nuget-
 
     - name: Update Version Files
-      working-directory: ${{ env.PATH_TO_EXTENSION }}
-      run: |
-        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/public/umbraco-package.json > temp.json && mv temp.json Client/public/umbraco-package.json
-        jq '.version = "${{ needs.setup.outputs.semver }}"' Client/package.json > temp2.json && mv temp2.json Client/package.json
-
-        # Convert semantic version to numeric file version (e.g., 2.0.0-alpha.1 -> 2.0.0.1)
-        SEMVER="${{ needs.setup.outputs.semver }}"
-        if [[ $SEMVER == *"-"* ]]; then
-          BASE_VERSION=$(echo $SEMVER | cut -d'-' -f1)
-          PRERELEASE=$(echo $SEMVER | cut -d'-' -f2)
-          # Extract number from prerelease (e.g., alpha.1 -> 1, beta.2 -> 2)
-          PRERELEASE_NUM=$(echo $PRERELEASE | grep -o '[0-9]\+$' || echo "0")
-          FILE_VERSION="${BASE_VERSION}.${PRERELEASE_NUM}"
-        else
-          FILE_VERSION="${SEMVER}.0"
-        fi
-        
-        # Find and update csproj file
-        CSPROJ_FILE=$(find . -name "*.csproj" -not -path "*/bin/*" -not -path "*/obj/*" | head -1)
-        sed -i "s|<FileVersion>\$(FileVersionNumber)</FileVersion>|<FileVersion>$FILE_VERSION</FileVersion>|" "$CSPROJ_FILE"
+      id: update-version
+      uses: CrumpledDog/Crumpled.Umbraco.Package.Actions/update-version-files@main
+      with:
+        semver: ${{ needs.setup.outputs.semver }}
+        path-to-extension: ${{ env.PATH_TO_EXTENSION }}
 
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
@@ -134,11 +149,17 @@ jobs:
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         cd Client
-        npm run build        
+        npm run build
 
-    - name: Build sln
-      run: dotnet build ${{ github.workspace }}/*.slnx -c Release        
+    - name: Build slnx
+      run: dotnet build ${{ github.workspace }}/*.slnx -c Release
 
     - name: Pack NuGet Package
       working-directory: ${{ env.PATH_TO_EXTENSION }}
-      run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }}
+      run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
+    
+    - name: Install Package Validation Tool
+      run: dotnet tool install -g dotnet-validate --prerelease
+    
+    - name: Validate NuGet Package
+      run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
