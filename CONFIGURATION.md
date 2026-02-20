@@ -10,6 +10,7 @@
 | `Redact` | `RedactionRule[]` | `[]` | Rules for redacting sensitive values |
 | `RedactionCharacter` | `string` | `•` | Character to use for redaction |
 | `PartialVisibleChars` | `int` | `4` | Number of characters to show at start/end in Partial mode |
+| `AzureWebAppAdvancedCopy` | `bool` | `false` | Enable Azure Web App JSON snippet copy feature in the dashboard |
 
 ### Exclusion Patterns
 
@@ -509,6 +510,52 @@ This configuration provides:
 - **Shared secrets**: Protects any configuration key containing "Secret" (except header names like `SHAREDSECRET:HEADERNAME`)
 - **Website keys**: Fully hides Azure App Service authentication keys (`WEBSITE_AUTH_ENCRYPTION_KEY`, `WEBSITE_AUTH_SIGNING_KEY`)
 - **Umbraco Forms**: Protects reCAPTCHA private keys with partial visibility
+
+## Dashboard Features
+
+### Copy to Clipboard
+
+The dashboard provides copy buttons for quick clipboard access:
+
+- **Copy Key**: Click the 📋 button next to any key to copy it (respects the "Environment variable format" toggle)
+- **Copy Value**: Click the 📋 button next to any value to copy it
+- All copy operations show a success/failure notification
+
+### Azure Web App JSON Export
+
+Enable the Azure Web App advanced copy feature to export configuration as Azure-ready JSON snippets:
+
+```json
+{
+  "EnvironmentInspect": {
+    "AzureWebAppAdvancedCopy": true
+  }
+}
+```
+
+When enabled, an additional "Azure" column appears with a ☁️ button. Clicking it copies a JSON snippet formatted for Azure Web App configuration:
+
+```json
+{
+  "name": "UMBRACO__CMS__GLOBAL__ID",
+  "value": "2ebd3039-ba1b-4d64-8678-d13accaeeac5",
+  "slotSetting": false
+}
+```
+
+This format can be directly imported into:
+- Azure Portal → Configuration → Application settings
+- Azure CLI → `az webapp config appsettings set`
+- ARM templates
+- Bicep files
+
+### Filter Options
+
+The dashboard includes toggles for real-time filtering:
+
+- **Exclude empty values** (default: on) - Hide entries with null or empty values
+- **Only redacted** - Show only values that have been redacted
+- **Environment variable format** - Convert `:` to `__` in all keys (e.g., `Umbraco:CMS:Global` → `UMBRACO__CMS__GLOBAL`)
 
 ## Regex Pattern Tips
 

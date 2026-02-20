@@ -17,7 +17,10 @@ This makes it easier to learn why some variables you expected to work have not b
 - 🔒 **Redact sensitive data** with multiple redaction modes (Full, Partial, Advanced)
 - 🎯 **Exclude configuration keys** using regex patterns
 - 🔐 **Provider-based filtering** - match by provider type, source file, or full name
-- 🚀 **Performance optimized** with runtime caching and change detection
+- � **Copy keys and values** with one-click clipboard support and notifications
+- ☁️ **Azure Web App JSON export** - copy configuration as ready-to-use Azure Web App JSON snippets
+- 🔄 **Environment variable format** - convert keys from `Umbraco:CMS:Setting` to `UMBRACO__CMS__SETTING`
+- �🚀 **Performance optimized** with runtime caching and change detection
 - 🔄 **Hot reload support** - configuration changes are automatically applied
 
 ## Installation
@@ -41,6 +44,13 @@ Install-Package Cultiv.EnvironmentInspect
 3. View all configuration values and their sources
 
 That's it! The package works out of the box with no configuration required.
+
+### Dashboard Features
+
+- **Copy buttons** - One-click clipboard copy for keys and values with success notifications
+- **Filter options** - Toggle to exclude empty values, show only redacted items, or convert keys to environment variable format
+- **Azure Web App export** - Enable `AzureWebAppAdvancedCopy` to get a ☁️ button that copies Azure-ready JSON snippets
+- **Virtual scrolling** - Efficiently handles thousands of configuration entries
 
 ## Configuration (Optional)
 
@@ -87,7 +97,8 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
       }
     ],
     "RedactionCharacter": "•",
-    "PartialVisibleChars": 4
+    "PartialVisibleChars": 4,
+    "AzureWebAppAdvancedCopy": false
   }
 }
 ```
