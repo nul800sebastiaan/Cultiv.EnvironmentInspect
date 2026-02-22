@@ -39,6 +39,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   get hasMore(): boolean {
     return this.displayedCount < this.filteredVariables.length;
   }
+
+  get hasAnyRedactions(): boolean {
+    return this.environmentVariables.some(v => v.redactedMode != null && v.redactedMode !== '');
+  }
   
   formatKey(key: string): string {
     if (this.replaceColonWithUnderscore) {
@@ -113,6 +117,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
             <div class="toggle-item">
               <uui-toggle
                 ?checked=${this.onlyRedacted}
+                ?disabled=${!this.hasAnyRedactions}
+                title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
                 @change=${(e: CustomEvent) => this.onlyRedacted = (e.target as any).checked}>
               </uui-toggle>
               <label>Only redacted</label>
