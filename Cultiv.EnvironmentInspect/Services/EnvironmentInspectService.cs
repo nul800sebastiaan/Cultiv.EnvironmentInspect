@@ -20,8 +20,8 @@ namespace Cultiv.EnvironmentInspect.Services
     private readonly ILogger<EnvironmentInspectService> _logger;
     private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
     private const string CacheKey = "Cultiv.EnvironmentInspect.ConfigData";
-    private IDisposable? _changeTokenRegistration;
-    private IDisposable? _optionsChangeRegistration;
+    private IDisposable _changeTokenRegistration;
+    private IDisposable _optionsChangeRegistration;
 
     public EnvironmentInspectService(
         IConfiguration configuration, 
@@ -140,7 +140,7 @@ namespace Cultiv.EnvironmentInspect.Services
         return environmentVariables;
     }
 
-    private static (string? Value, IConfigurationProvider? Provider) GetValueAndProvider(
+    private static (string Value, IConfigurationProvider Provider) GetValueAndProvider(
         IConfigurationRoot root,
         string key)
     {
@@ -155,7 +155,7 @@ namespace Cultiv.EnvironmentInspect.Services
         return (null, null);
     }
 
-    private static (string? ProviderType, string? ProviderSource) ParseProvider(string? provider)
+    private static (string ProviderType, string ProviderSource) ParseProvider(string provider)
     {
         if (string.IsNullOrWhiteSpace(provider))
         {
@@ -163,7 +163,7 @@ namespace Cultiv.EnvironmentInspect.Services
         }
 
         var providerType = provider.Split(' ', 2)[0];
-        string? providerSource = null;
+        string providerSource = null;
         var match = Regex.Match(provider, @"'([^']+)'");
         if (match.Success)
         {

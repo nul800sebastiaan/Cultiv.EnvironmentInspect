@@ -43,24 +43,24 @@ public class RedactionRule
     /// <summary>
     /// Regex pattern for matching configuration keys (mutually exclusive with Provider)
     /// </summary>
-    public string? Key { get; set; }
+    public string Key { get; set; }
 
     /// <summary>
     /// Provider name to match (mutually exclusive with Key)
     /// </summary>
-    public string? Provider { get; set; }
+    public string Provider { get; set; }
 
     /// <summary>
     /// Provider type (class name) to match. Case-insensitive regex pattern.
     /// Example: "JsonConfigurationProvider" or ".*Azure.*"
     /// </summary>
-    public string? ProviderType { get; set; }
+    public string ProviderType { get; set; }
 
     /// <summary>
     /// Provider source (file name or identifier) to match. Case-insensitive regex pattern.
     /// Example: "appsettings.Development.json" or ".*Development.*"
     /// </summary>
-    public string? ProviderSource { get; set; }
+    public string ProviderSource { get; set; }
 
     /// <summary>
     /// The redaction mode to apply
@@ -70,7 +70,7 @@ public class RedactionRule
     /// <summary>
     /// Additional options for Advanced redaction mode
     /// </summary>
-    public RedactionOptions? RedactionOptions { get; set; }
+    public RedactionOptions RedactionOptions { get; set; }
 }
 
 /// <summary>
@@ -91,7 +91,7 @@ public class RedactionOptions
     /// <summary>
     /// List of nested keys to redact (for complex values like connection strings)
     /// </summary>
-    public List<string>? Keys { get; set; }
+    public List<string> Keys { get; set; }
 }
 
 /// <summary>
@@ -124,23 +124,23 @@ public class ExclusionRule
     /// <summary>
     /// Regex pattern for matching configuration keys
     /// </summary>
-    public string? Key { get; set; }
+    public string Key { get; set; }
 
     /// <summary>
     /// Provider name to match
     /// </summary>
-    public string? Provider { get; set; }
+    public string Provider { get; set; }
 
     /// <summary>
     /// Provider type (class name) to match. Case-insensitive regex pattern.
     /// Example: "JsonConfigurationProvider" or ".*Azure.*"
     /// </summary>
-    public string? ProviderType { get; set; }
+    public string ProviderType { get; set; }
 
     /// <summary>
     /// Provider source (file name or identifier) to match. Case-insensitive regex pattern.
     /// Example: "appsettings.Development.json" or ".*Development.*"
     /// </summary>
-    public string? ProviderSource { get; set; }
+    public string ProviderSource { get; set; }
 }
 }
