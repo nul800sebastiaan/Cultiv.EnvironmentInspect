@@ -52,6 +52,13 @@ function EnvironmentController($scope, $http, umbRequestHelper, clipboardService
         }
     };
 
+    // Check if there are any redacted values
+    vm.hasAnyRedactions = function() {
+        return vm.data.some(function(item) {
+            return item.RedactedMode != null && item.RedactedMode !== '';
+        });
+    };
+
     // Filter function for ng-repeat
     vm.filterVariables = function(item) {
         // Filter out empty values if enabled

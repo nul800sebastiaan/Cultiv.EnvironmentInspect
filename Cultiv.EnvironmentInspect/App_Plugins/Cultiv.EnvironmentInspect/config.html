@@ -20,9 +20,12 @@
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <umb-toggle
                             checked="vm.onlyRedacted"
+                            disabled="!vm.hasAnyRedactions()"
                             on-click="vm.onlyRedacted = !vm.onlyRedacted">
                         </umb-toggle>
-                        <label style="margin: 0; cursor: pointer;" ng-click="vm.onlyRedacted = !vm.onlyRedacted">Only redacted</label>
+                        <label style="margin: 0; cursor: pointer;" 
+                               ng-click="vm.hasAnyRedactions() && (vm.onlyRedacted = !vm.onlyRedacted)"
+                               title="{{ vm.hasAnyRedactions() ? '' : 'No redacted values available' }}">Only redacted</label>
                     </div>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <umb-toggle

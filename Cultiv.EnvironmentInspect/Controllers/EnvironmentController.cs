@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Cultiv.EnvironmentInspect.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Web.BackOffice.Controllers;
 using Umbraco.Cms.Web.Common.Authorization;
 
@@ -17,6 +18,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
             _environmentInspectService = environmentInspectService;
         }
         
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<EnvironmentInspectResponse> GetEnvironment()
         {
             return await _environmentInspectService.GetEnvironmentDataAsync();

@@ -42,7 +42,23 @@ namespace Cultiv.EnvironmentInspect.Services
                 () =>
                 {
                     _logger.LogInformation("Configuration change detected, clearing environment inspect cache");
+                    // Clear cache when configuration changes
                     _runtimeCache.Clear(CacheKey);
+                    
+                    // Re-warm the cache in the background
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            _logger.LogDebug("Re-warming environment inspect cache after configuration change");
+                            await GetEnvironmentDataAsync();
+                            _logger.LogInformation("Environment inspect cache re-warmed successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to re-warm environment inspect cache after configuration change");
+                        }
+                    });
                 });
         }
 
@@ -69,11 +85,18 @@ namespace Cultiv.EnvironmentInspect.Services
 
     private List<EnvironmentVariable> BuildEnvironmentData()
     {
+        _logger.LogDebug("Building environment data...");
         var environmentVariables = new List<EnvironmentVariable>(capacity: 200);
 
         if (_configuration is not IConfigurationRoot configurationRoot) return environmentVariables;
 
         var options = _options.CurrentValue;
+        _logger.LogDebug("Current exclusion rules count: {Count}", options.Exclude.Count);
+        foreach (var rule in options.Exclude)
+        {
+            _logger.LogDebug("Exclusion rule - Key: {Key}, Provider: {Provider}, ProviderType: {ProviderType}, ProviderSource: {ProviderSource}", 
+                rule.Key, rule.Provider, rule.ProviderType, rule.ProviderSource);
+        }
 
         void RecurseChildren(IEnumerable<IConfigurationSection> children)
         {
@@ -109,7 +132,9 @@ namespace Cultiv.EnvironmentInspect.Services
 
         RecurseChildren(configurationRoot.GetChildren().Where(x => !string.IsNullOrEmpty(x.Path)));
 
+        _logger.LogDebug("Total variables before exclusions: {Count}", environmentVariables.Count);
         environmentVariables = ApplyExclusions(environmentVariables, options);
+        _logger.LogDebug("Total variables after exclusions: {Count}", environmentVariables.Count);
         environmentVariables = ApplyRedactions(environmentVariables, options);
 
         return environmentVariables;
@@ -152,7 +177,8 @@ namespace Cultiv.EnvironmentInspect.Services
         List<EnvironmentVariable> variables, 
         EnvironmentInspectOptions options)
     {
-        return variables.Where(variable =>
+        var excluded = new List<string>();
+        var result = variables.Where(variable =>
         {
             var matchesExclusion = options.Exclude.Any(rule =>
             {
@@ -229,8 +255,17 @@ namespace Cultiv.EnvironmentInspect.Services
                 return matches.Count > 0 && matches.All(m => m);
             });
 
+            if (matchesExclusion)
+            {
+                excluded.Add(variable.Key);
+                _logger.LogDebug("Excluding variable: {Key}", variable.Key);
+            }
+
             return !matchesExclusion;
         }).ToList();
+        
+        _logger.LogDebug("Applied exclusions: {ExcludedCount} variables excluded out of {TotalCount}", excluded.Count, variables.Count);
+        return result;
     }
 
     private List<EnvironmentVariable> ApplyRedactions(
