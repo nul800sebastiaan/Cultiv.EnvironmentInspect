@@ -2,7 +2,6 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 using Umbraco.Cms.Core.Cache;
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.Controllers;
@@ -16,8 +15,9 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
     private readonly ILogger<EnvironmentInspectService> _logger;
     private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
     private const string CacheKey = "Cultiv.EnvironmentInspect.ConfigData";
-    private IDisposable? _changeTokenRegistration;
     private IDisposable? _optionsChangeRegistration;
+    private DateTime _lastConfigChange = DateTime.MinValue;
+    private readonly object _configChangeLock = new object();
 
     public EnvironmentInspectService(
         IConfiguration configuration, 
@@ -30,39 +30,38 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         _logger = logger;
         _options = options;
 
-        // Register for configuration change notifications
-        if (_configuration is IConfigurationRoot configRoot)
-        {
-            _changeTokenRegistration = ChangeToken.OnChange(
-                () => configRoot.GetReloadToken(),
-                () =>
-                {
-                    _logger.LogInformation("Configuration change detected, clearing environment inspect cache");
-                    // Clear cache when configuration changes
-                    _runtimeCache.Clear(CacheKey);
-                    
-                    // Re-warm the cache in the background
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            _logger.LogDebug("Re-warming environment inspect cache after configuration change");
-                            await GetEnvironmentDataAsync();
-                            _logger.LogInformation("Environment inspect cache re-warmed successfully");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to re-warm environment inspect cache after configuration change");
-                        }
-                    });
-                });
-        }
-
         // Register for options change notifications
         _optionsChangeRegistration = _options.OnChange(opts =>
         {
+            // Debounce: Ignore duplicate change notifications within 500ms
+            lock (_configChangeLock)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastConfigChange).TotalMilliseconds < 500)
+                {
+                    _logger.LogDebug("Ignoring duplicate configuration change notification (debounced)");
+                    return;
+                }
+                _lastConfigChange = now;
+            }
+            
             _logger.LogInformation("EnvironmentInspect options changed, clearing cache");
             _runtimeCache.Clear(CacheKey);
+            
+            // Re-warm the cache in the background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogDebug("Re-warming environment inspect cache after configuration change");
+                    await GetEnvironmentDataAsync();
+                    _logger.LogInformation("Environment inspect cache re-warmed successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to re-warm environment inspect cache after configuration change");
+                }
+            });
         });
     }
 
@@ -524,7 +523,6 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
     public void Dispose()
     {
-        _changeTokenRegistration?.Dispose();
         _optionsChangeRegistration?.Dispose();
     }
 }
