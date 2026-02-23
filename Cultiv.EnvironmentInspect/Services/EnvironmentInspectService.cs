@@ -82,12 +82,19 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
     private List<EnvironmentVariable> BuildEnvironmentData()
     {
+        _logger.LogDebug("Building environment data...");
         var environmentVariables = new List<EnvironmentVariable>(capacity: 200); // Pre-allocate with estimated capacity
 
         if (_configuration is not IConfigurationRoot configurationRoot) return environmentVariables;
 
         // Get current options
         var options = _options.CurrentValue;
+        _logger.LogDebug("Current exclusion rules count: {Count}", options.Exclude.Count);
+        foreach (var rule in options.Exclude)
+        {
+            _logger.LogDebug("Exclusion rule - Key: {Key}, Provider: {Provider}, ProviderType: {ProviderType}, ProviderSource: {ProviderSource}", 
+                rule.Key, rule.Provider, rule.ProviderType, rule.ProviderSource);
+        }
 
         // Adapted from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Abstractions/src/ConfigurationRootExtensions.cs#L36
         void RecurseChildren(IEnumerable<IConfigurationSection> children)
@@ -124,8 +131,10 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
         RecurseChildren(configurationRoot.GetChildren().Where(x => !string.IsNullOrEmpty(x.Path)));
 
+        _logger.LogDebug("Total variables before exclusions: {Count}", environmentVariables.Count);
         // Apply exclusions
         environmentVariables = ApplyExclusions(environmentVariables, options);
+        _logger.LogDebug("Total variables after exclusions: {Count}", environmentVariables.Count);
 
         // Apply redactions
         environmentVariables = ApplyRedactions(environmentVariables, options);
@@ -175,7 +184,8 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         List<EnvironmentVariable> variables, 
         EnvironmentInspectOptions options)
     {
-        return variables.Where(variable =>
+        var excluded = new List<string>();
+        var result = variables.Where(variable =>
         {
             // Check if variable matches any exclusion rule
             var matchesExclusion = options.Exclude.Any(rule =>
@@ -260,11 +270,16 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
             if (matchesExclusion)
             {
+                excluded.Add(variable.Key);
+                _logger.LogDebug("Excluding variable: {Key}", variable.Key);
                 return false;
             }
 
             return true;
         }).ToList();
+        
+        _logger.LogDebug("Applied exclusions: {ExcludedCount} variables excluded out of {TotalCount}", excluded.Count, variables.Count);
+        return result;
     }
 
     private List<EnvironmentVariable> ApplyRedactions(
