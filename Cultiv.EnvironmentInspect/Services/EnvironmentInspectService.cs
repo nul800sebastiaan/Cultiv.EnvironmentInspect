@@ -20,6 +20,8 @@ namespace Cultiv.EnvironmentInspect.Services
     private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
     private const string CacheKey = "Cultiv.EnvironmentInspect.ConfigData";
     private IDisposable _optionsChangeRegistration;
+    private DateTime _lastConfigChange = DateTime.MinValue;
+    private readonly object _configChangeLock = new object();
 
     public EnvironmentInspectService(
         IConfiguration configuration, 
@@ -35,6 +37,18 @@ namespace Cultiv.EnvironmentInspect.Services
         // Register for options change notifications
         _optionsChangeRegistration = _options.OnChange(opts =>
         {
+            // Debounce: Ignore duplicate change notifications within 500ms
+            lock (_configChangeLock)
+            {
+                var now = DateTime.UtcNow;
+                if ((now - _lastConfigChange).TotalMilliseconds < 500)
+                {
+                    _logger.LogDebug("Ignoring duplicate configuration change notification (debounced)");
+                    return;
+                }
+                _lastConfigChange = now;
+            }
+            
             _logger.LogInformation("EnvironmentInspect options changed, clearing cache");
             _runtimeCache.Clear(CacheKey);
             
