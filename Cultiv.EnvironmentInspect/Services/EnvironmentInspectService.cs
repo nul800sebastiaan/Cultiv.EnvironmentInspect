@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Primitives;
 using Umbraco.Cms.Core.Cache;
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.Controllers;
@@ -20,7 +19,6 @@ namespace Cultiv.EnvironmentInspect.Services
     private readonly ILogger<EnvironmentInspectService> _logger;
     private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
     private const string CacheKey = "Cultiv.EnvironmentInspect.ConfigData";
-    private IDisposable _changeTokenRegistration;
     private IDisposable _optionsChangeRegistration;
 
     public EnvironmentInspectService(
@@ -34,39 +32,26 @@ namespace Cultiv.EnvironmentInspect.Services
         _logger = logger;
         _options = options;
 
-        // Register for configuration change notifications
-        if (_configuration is IConfigurationRoot configRoot)
-        {
-            _changeTokenRegistration = ChangeToken.OnChange(
-                () => configRoot.GetReloadToken(),
-                () =>
-                {
-                    _logger.LogInformation("Configuration change detected, clearing environment inspect cache");
-                    // Clear cache when configuration changes
-                    _runtimeCache.Clear(CacheKey);
-                    
-                    // Re-warm the cache in the background
-                    _ = Task.Run(async () =>
-                    {
-                        try
-                        {
-                            _logger.LogDebug("Re-warming environment inspect cache after configuration change");
-                            await GetEnvironmentDataAsync();
-                            _logger.LogInformation("Environment inspect cache re-warmed successfully");
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to re-warm environment inspect cache after configuration change");
-                        }
-                    });
-                });
-        }
-
         // Register for options change notifications
         _optionsChangeRegistration = _options.OnChange(opts =>
         {
             _logger.LogInformation("EnvironmentInspect options changed, clearing cache");
             _runtimeCache.Clear(CacheKey);
+            
+            // Re-warm the cache in the background
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    _logger.LogDebug("Re-warming environment inspect cache after configuration change");
+                    await GetEnvironmentDataAsync();
+                    _logger.LogInformation("Environment inspect cache re-warmed successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to re-warm environment inspect cache after configuration change");
+                }
+            });
         });
     }
 
@@ -493,7 +478,6 @@ namespace Cultiv.EnvironmentInspect.Services
 
     public void Dispose()
     {
-        _changeTokenRegistration?.Dispose();
         _optionsChangeRegistration?.Dispose();
     }
     }

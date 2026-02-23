@@ -1,10 +1,12 @@
 using System.Linq;
 using Cultiv.EnvironmentInspect.Configuration;
+using Cultiv.EnvironmentInspect.NotificationHandlers;
 using Cultiv.EnvironmentInspect.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Umbraco.Cms.Core.Composing;
 using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Core.Notifications;
 
 namespace Cultiv.EnvironmentInspect.Composers
 {
@@ -45,6 +47,9 @@ namespace Cultiv.EnvironmentInspect.Composers
                     }
                 }
             });
+            
+            // Pre-warm the cache on application startup
+            builder.AddNotificationAsyncHandler<UmbracoApplicationStartingNotification, CachePrewarmHandler>();
         }
     }
 }
