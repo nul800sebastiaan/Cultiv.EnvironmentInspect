@@ -71,7 +71,8 @@ namespace Cultiv.EnvironmentInspect.Composers
             builder.Services.AddDbContext<EnvironmentInspectDbContext>((serviceProvider, options) =>
             {
                 var connectionStrings = serviceProvider.GetRequiredService<IOptionsMonitor<ConnectionStrings>>().CurrentValue;
-                var connectionString = connectionStrings.ConnectionString;
+                
+                var connectionString = connectionStrings.ConnectionString!;
                 var providerName = connectionStrings.ProviderName;
                 
                 // Resolve |DataDirectory| placeholder for SQLite
