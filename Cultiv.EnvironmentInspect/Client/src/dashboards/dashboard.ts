@@ -16,6 +16,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
   @state() starredSettings: Set<string> = new Set();
+  private togglingStar: Set<string> = new Set(); // Track in-flight toggle requests
   private readonly incrementSize: number = 50;
 
   get filteredVariables(): EnvironmentVariable[] {
@@ -60,6 +61,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   }
   
   async toggleStar(key: string) {
+    // Prevent concurrent toggles for the same key
+    if (this.togglingStar.has(key)) {
+      return;
+    }
+    
+    this.togglingStar.add(key);
+    
     try {
       const { error } = await CultivEnvironmentInspectService.toggleStar({
         body: { settingKey: key }
@@ -89,6 +97,9 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           message: 'Could not update starred setting' 
         } 
       });
+    } finally {
+      // Always remove from in-flight set
+      this.togglingStar.delete(key);
     }
   }
   

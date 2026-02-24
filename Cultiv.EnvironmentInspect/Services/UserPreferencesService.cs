@@ -97,29 +97,42 @@ internal class UserPreferencesService : IUserPreferencesService
 
     public async Task ToggleStarAsync(string userKey, string settingKey)
     {
-        var existing = await _dbContext.UserPreferences
-            .FirstOrDefaultAsync(p => p.UserKey == userKey && p.SettingKey == settingKey);
-
-        var now = DateTime.UtcNow;
-
-        if (existing != null)
+        // Use a transaction to prevent race conditions from concurrent toggle requests
+        using var transaction = await _dbContext.Database.BeginTransactionAsync(
+            System.Data.IsolationLevel.Serializable);
+        
+        try
         {
-            existing.IsStarred = !existing.IsStarred;
-            existing.ModifiedDate = now;
-        }
-        else
-        {
-            _dbContext.UserPreferences.Add(new UserPreference
+            var existing = await _dbContext.UserPreferences
+                .FirstOrDefaultAsync(p => p.UserKey == userKey && p.SettingKey == settingKey);
+
+            var now = DateTime.UtcNow;
+
+            if (existing != null)
             {
-                UserKey = userKey,
-                SettingKey = settingKey,
-                IsStarred = true,
-                CreatedDate = now,
-                ModifiedDate = now
-            });
-        }
+                existing.IsStarred = !existing.IsStarred;
+                existing.ModifiedDate = now;
+            }
+            else
+            {
+                _dbContext.UserPreferences.Add(new UserPreference
+                {
+                    UserKey = userKey,
+                    SettingKey = settingKey,
+                    IsStarred = true,
+                    CreatedDate = now,
+                    ModifiedDate = now
+                });
+            }
 
-        await _dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task SaveUISettingsAsync(string userKey, UISettingsDto uiSettings)
