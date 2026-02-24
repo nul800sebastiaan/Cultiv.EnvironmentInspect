@@ -17,6 +17,11 @@ on:
         required: false
         type: boolean
         default: false
+      create_github_release:
+        description: 'Create GitHub Release'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   setup:
@@ -161,7 +166,7 @@ jobs:
       run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
     
     - name: Create GitHub Release
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
