@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi;
+using Microsoft.EntityFrameworkCore;
 
 using Swashbuckle.AspNetCore.SwaggerGen;
 
@@ -13,10 +14,14 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Api.Common.OpenApi;
 using Umbraco.Cms.Core.Notifications;
+using Umbraco.Cms.Infrastructure.Persistence;
+using Umbraco.Cms.Core.Configuration.Models;
 
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.NotificationHandlers;
 using Cultiv.EnvironmentInspect.Services;
+using Cultiv.EnvironmentInspect.Data;
+using Cultiv.EnvironmentInspect.Migrations;
 
 namespace Cultiv.EnvironmentInspect.Composers
 {
@@ -58,10 +63,43 @@ namespace Cultiv.EnvironmentInspect.Composers
 
             // Register the environment inspect service
             builder.Services.AddSingleton<IEnvironmentInspectService, EnvironmentInspectService>();
+            
+            // Register user preferences service
+            builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+            
+            // Register EF Core DbContext with Umbraco's database connection
+            builder.Services.AddDbContext<EnvironmentInspectDbContext>((serviceProvider, options) =>
+            {
+                var connectionStrings = serviceProvider.GetRequiredService<IOptionsMonitor<ConnectionStrings>>().CurrentValue;
+                var connectionString = connectionStrings.ConnectionString;
+                var providerName = connectionStrings.ProviderName;
+                
+                // Resolve |DataDirectory| placeholder for SQLite
+                if (connectionString.Contains("|DataDirectory|", StringComparison.OrdinalIgnoreCase))
+                {
+                    var hostEnvironment = serviceProvider.GetRequiredService<Microsoft.Extensions.Hosting.IHostEnvironment>();
+                    var dataDirectory = Path.Combine(hostEnvironment.ContentRootPath, "umbraco", "Data");
+                    connectionString = connectionString.Replace("|DataDirectory|", dataDirectory, StringComparison.OrdinalIgnoreCase);
+                }
+                
+                if (string.IsNullOrWhiteSpace(providerName) || providerName.Contains("SQLite", StringComparison.OrdinalIgnoreCase))
+                {
+                    options.UseSqlite(connectionString);
+                }
+                else
+                {
+                    options.UseSqlServer(connectionString);
+                }
+            });
+            
+            // Register operation ID handler for Swagger
             builder.Services.AddSingleton<IOperationIdHandler, CustomOperationHandler>();
 
             // Pre-warm the cache on application startup
             builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, CachePrewarmHandler>();
+            
+            // Run database migrations on application startup
+            builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, RunUserPreferencesMigration>();
 
             builder.Services.Configure<SwaggerGenOptions>(opt =>
             {

@@ -12,8 +12,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() displayedCount: number = 50;
   @state() excludeEmptyValues: boolean = true;
   @state() onlyRedacted: boolean = false;
+  @state() onlyStarred: boolean = false;
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
+  @state() starredSettings: Set<string> = new Set();
   private readonly incrementSize: number = 50;
 
   get filteredVariables(): EnvironmentVariable[] {
@@ -29,6 +31,11 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       filtered = filtered.filter(v => v.redactedMode != null && v.redactedMode !== '');
     }
     
+    // Filter to only starred items if enabled
+    if (this.onlyStarred) {
+      filtered = filtered.filter(v => this.starredSettings.has(v.key!));
+    }
+    
     return filtered;
   }
 
@@ -42,6 +49,47 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
   get hasAnyRedactions(): boolean {
     return this.environmentVariables.some(v => v.redactedMode != null && v.redactedMode !== '');
+  }
+  
+  get hasAnyStarred(): boolean {
+    return this.starredSettings.size > 0;
+  }
+  
+  isStarred(key: string): boolean {
+    return this.starredSettings.has(key);
+  }
+  
+  async toggleStar(key: string) {
+    try {
+      const { error } = await CultivEnvironmentInspectService.toggleStar({
+        body: { settingKey: key }
+      });
+      
+      if (error) {
+        console.error('API error response:', error);
+        throw new Error(`Failed to toggle star: ${JSON.stringify(error)}`);
+      }
+      
+      // Update local state
+      if (this.starredSettings.has(key)) {
+        this.starredSettings.delete(key);
+      } else {
+        this.starredSettings.add(key);
+      }
+      
+      // Trigger re-render
+      this.requestUpdate();
+    } catch (err) {
+      console.error('Failed to toggle star: ', err);
+      
+      const notificationContext = await this.getContext(UMB_NOTIFICATION_CONTEXT);
+      notificationContext?.peek('danger', { 
+        data: { 
+          headline: 'Star Toggle Failed',
+          message: 'Could not update starred setting' 
+        } 
+      });
+    }
   }
   
   formatKey(key: string): string {
@@ -110,7 +158,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
             <div class="toggle-item">
               <uui-toggle
                 ?checked=${this.excludeEmptyValues}
-                @change=${(e: CustomEvent) => this.excludeEmptyValues = (e.target as any).checked}>
+                @change=${(e: CustomEvent) => {
+                  this.excludeEmptyValues = (e.target as any).checked;
+                  this.saveUISettings();
+                }}>
               </uui-toggle>
               <label>Exclude empty values</label>
             </div>
@@ -119,22 +170,43 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                 ?checked=${this.onlyRedacted}
                 ?disabled=${!this.hasAnyRedactions}
                 title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
-                @change=${(e: CustomEvent) => this.onlyRedacted = (e.target as any).checked}>
+                @change=${(e: CustomEvent) => {
+                  this.onlyRedacted = (e.target as any).checked;
+                  this.saveUISettings();
+                }}>
               </uui-toggle>
               <label>Only redacted</label>
             </div>
             <div class="toggle-item">
               <uui-toggle
+                ?checked=${this.onlyStarred}
+                ?disabled=${!this.hasAnyStarred}
+                title=${this.hasAnyStarred ? '' : 'No starred settings available'}
+                @change=${(e: CustomEvent) => {
+                  this.onlyStarred = (e.target as any).checked;
+                  this.saveUISettings();
+                }}>
+              </uui-toggle>
+              <label>⭐ Only starred</label>
+            </div>
+            <div class="toggle-item">
+              <uui-toggle
                 ?checked=${this.replaceColonWithUnderscore}
-                @change=${(e: CustomEvent) => this.replaceColonWithUnderscore = (e.target as any).checked}>
+                @change=${(e: CustomEvent) => {
+                  this.replaceColonWithUnderscore = (e.target as any).checked;
+                  this.saveUISettings();
+                }}>
               </uui-toggle>
               <label>Environment variable format (__ instead of :)</label>
             </div>
           </div>
           <div class="content-container" @scroll=${this.handleScroll}>          
             <uui-table>
-              <uui-table-column style="width: 50%;"></uui-table-column>
+              <uui-table-column style="width: 40px;"></uui-table-column>
+              <uui-table-column style="width: 40%;"></uui-table-column>
+              <uui-table-column style="width: 40%;"></uui-table-column>
               <uui-table-head style="background-color: #1b264f; color: white">
+                <uui-table-head-cell style="width: 40px; text-align: center;">⭐</uui-table-head-cell>
                 <uui-table-head-cell>Environment value path</uui-table-head-cell>
                 <uui-table-head-cell>Value / Provider</uui-table-head-cell>
                 ${when(this.azureWebAppAdvancedCopy, () => html`
@@ -146,6 +218,17 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   (item) => item.key,
                   (item) => html`
                     <uui-table-row>
+                      <uui-table-cell class="star-cell">
+                        <uui-button 
+                          compact
+                          look="outline"
+                          label=${this.isStarred(item.key!) ? 'Unstar' : 'Star'}
+                          title=${this.isStarred(item.key!) ? 'Remove from starred' : 'Add to starred'}
+                          @click=${() => this.toggleStar(item.key!)}
+                          class="star-button ${this.isStarred(item.key!) ? 'starred' : ''}">
+                          ${this.isStarred(item.key!) ? '⭐' : '☆'}
+                        </uui-button>
+                      </uui-table-cell>
                       <uui-table-cell class="key-cell">
                         <div class="key-container">
                           <span class="key-text">${this.formatKey(item.key!)}</span>
@@ -239,14 +322,31 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
   async firstUpdated() {
     try {
-      const { data } = await this.getData();
-      if (data) {
-        this.environmentVariables = data.variables || [];
-        this.azureWebAppAdvancedCopy = data.azureWebAppAdvancedCopy || false;
+      // Load environment data and user preferences in parallel
+      const [envData, prefsData] = await Promise.all([
+        this.getData(),
+        this.getUserPreferences()
+      ]);
+      
+      if (envData.data) {
+        this.environmentVariables = envData.data.variables || [];
+        this.azureWebAppAdvancedCopy = envData.data.azureWebAppAdvancedCopy || false;
+      }
+      
+      if (prefsData.data) {
+        this.starredSettings = new Set(prefsData.data.starredSettings || []);
+        
+        // Load UI settings
+        if (prefsData.data.uiSettings) {
+          this.excludeEmptyValues = prefsData.data.uiSettings.excludeEmptyValues ?? true;
+          this.onlyRedacted = prefsData.data.uiSettings.onlyRedacted ?? false;
+          this.onlyStarred = prefsData.data.uiSettings.onlyStarred ?? false;
+          this.replaceColonWithUnderscore = prefsData.data.uiSettings.replaceColonWithUnderscore ?? false;
+        }
       }
     } catch (e) {
       // Optionally handle error
-      console.error("Failed to load environment variables", e);
+      console.error("Failed to load data", e);
     } finally {
       this.isLoading = false;
     }
@@ -254,6 +354,30 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
   async getData(): Promise<any> { // or a more specific type if available
     return CultivEnvironmentInspectService.getEnvironment();
+  }
+  
+  async getUserPreferences(): Promise<any> {
+    try {
+      return await CultivEnvironmentInspectService.getUserPreferences();
+    } catch (e) {
+      console.error("Failed to load user preferences", e);
+      return { data: { starredSettings: [] } };
+    }
+  }
+  
+  async saveUISettings() {
+    try {
+      await CultivEnvironmentInspectService.saveUiSettings({
+        body: {
+          excludeEmptyValues: this.excludeEmptyValues,
+          onlyRedacted: this.onlyRedacted,
+          onlyStarred: this.onlyStarred,
+          replaceColonWithUnderscore: this.replaceColonWithUnderscore
+        }
+      });
+    } catch (e) {
+      console.error("Failed to save UI settings", e);
+    }
   }
 
   static styles = [
@@ -339,6 +463,28 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
       uui-table-row:hover .copy-button {
         opacity: 1;
+      }
+      
+      .star-cell {
+        text-align: center;
+        vertical-align: middle !important;
+        width: 40px !important;
+        max-width: 40px !important;
+        padding: 0.25rem !important;
+      }
+      
+      .star-button {
+        transition: all 0.2s;
+        min-width: 36px;
+        color: var(--uui-color-text-alt);
+      }
+      
+      .star-button.starred {
+        color: var(--uui-color-default);
+      }
+      
+      .star-button:hover {
+        color: var(--uui-color-default);
       }
 
       .load-more-container {
