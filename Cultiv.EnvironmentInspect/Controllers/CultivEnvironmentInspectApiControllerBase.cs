@@ -8,7 +8,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
 {
     [ApiController]
     [BackOfficeRoute("cultivenvironmentinspect/api/v{version:apiVersion}")]
-    [Authorize(Policy = AuthorizationPolicies.SectionAccessContent)]
+    [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
     [MapToApi(Constants.ApiName)]
     public class CultivEnvironmentInspectApiControllerBase : ControllerBase
     {
