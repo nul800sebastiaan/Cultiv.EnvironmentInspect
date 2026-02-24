@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Cultiv.EnvironmentInspect.Migrations
 {
     [DbContext(typeof(EnvironmentInspectDbContext))]
-    [Migration("20260224154535_InitialCreate")]
+    [Migration("20260224231700_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -37,7 +37,7 @@ namespace Cultiv.EnvironmentInspect.Migrations
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
-                        .HasMaxLength(500)
+                        .HasMaxLength(250)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("StringValue")
@@ -46,6 +46,7 @@ namespace Cultiv.EnvironmentInspect.Migrations
 
                     b.Property<string>("UserKey")
                         .IsRequired()
+                        .HasMaxLength(50)
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

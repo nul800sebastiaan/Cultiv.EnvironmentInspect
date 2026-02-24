@@ -13,7 +13,8 @@ internal class EnvironmentInspectDbContextFactory : IDesignTimeDbContextFactory<
     {
         var optionsBuilder = new DbContextOptionsBuilder<EnvironmentInspectDbContext>();
         
-        // Use SQLite for design-time/migrations (this won't be used at runtime)
+        // Use SQLite for design-time/migrations to generate provider-agnostic migrations
+        // The migrations will work on both SQLite and SQL Server at runtime
         optionsBuilder.UseSqlite("Data Source=environmentinspect.db");
         
         return new EnvironmentInspectDbContext(optionsBuilder.Options);

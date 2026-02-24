@@ -20,7 +20,9 @@ namespace Cultiv.EnvironmentInspect.Migrations
             modelBuilder.Entity("Cultiv.EnvironmentInspect.Data.UserPreference", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd();
+                        .ValueGeneratedOnAdd()
+                        .HasAnnotation("SqlServer:Identity", "1, 1")
+                        .HasAnnotation("Sqlite:Autoincrement", true);
 
                     b.Property<DateTime>("CreatedDate");
 
@@ -30,7 +32,7 @@ namespace Cultiv.EnvironmentInspect.Migrations
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
-                        .HasMaxLength(500);
+                        .HasMaxLength(250);
 
                     b.Property<string>("StringValue")
                         .HasMaxLength(2000);

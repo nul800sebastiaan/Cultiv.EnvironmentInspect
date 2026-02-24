@@ -12,7 +12,7 @@ internal class UserPreference
     public required string UserKey { get; set; }
     
     [Required]
-    [MaxLength(500)]
+    [MaxLength(250)]
     public required string SettingKey { get; set; }
     
     public bool IsStarred { get; set; }
