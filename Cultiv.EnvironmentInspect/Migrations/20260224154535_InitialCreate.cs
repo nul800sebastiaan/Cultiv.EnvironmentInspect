@@ -15,14 +15,15 @@ namespace Cultiv.EnvironmentInspect.Migrations
                 name: "CultivEnvironmentInspectUserPreferences",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1")
                         .Annotation("Sqlite:Autoincrement", true),
-                    UserKey = table.Column<string>(type: "TEXT", nullable: false),
-                    SettingKey = table.Column<string>(type: "TEXT", maxLength: 500, nullable: false),
-                    IsStarred = table.Column<bool>(type: "INTEGER", nullable: false),
-                    StringValue = table.Column<string>(type: "TEXT", maxLength: 2000, nullable: true),
-                    CreatedDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    ModifiedDate = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    UserKey = table.Column<string>(nullable: false),
+                    SettingKey = table.Column<string>(maxLength: 500, nullable: false),
+                    IsStarred = table.Column<bool>(nullable: false),
+                    StringValue = table.Column<string>(maxLength: 2000, nullable: true),
+                    CreatedDate = table.Column<DateTime>(nullable: false),
+                    ModifiedDate = table.Column<DateTime>(nullable: false)
                 },
                 constraints: table =>
                 {

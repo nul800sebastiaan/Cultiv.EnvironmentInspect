@@ -20,30 +20,23 @@ namespace Cultiv.EnvironmentInspect.Migrations
             modelBuilder.Entity("Cultiv.EnvironmentInspect.Data.UserPreference", b =>
                 {
                     b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
+                        .ValueGeneratedOnAdd();
 
-                    b.Property<DateTime>("CreatedDate")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedDate");
 
-                    b.Property<bool>("IsStarred")
-                        .HasColumnType("INTEGER");
+                    b.Property<bool>("IsStarred");
 
-                    b.Property<DateTime>("ModifiedDate")
-                        .HasColumnType("TEXT");
+                    b.Property<DateTime>("ModifiedDate");
 
                     b.Property<string>("SettingKey")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(500);
 
                     b.Property<string>("StringValue")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
+                        .HasMaxLength(2000);
 
                     b.Property<string>("UserKey")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
+                        .IsRequired();
 
                     b.HasKey("Id");
 
