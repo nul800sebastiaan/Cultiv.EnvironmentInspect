@@ -1,4 +1,4 @@
-function EnvironmentController($scope, $http, umbRequestHelper, clipboardService, notificationsService) {
+function EnvironmentController($scope, $http, umbRequestHelper, notificationsService) {
     let vm = this;
     let baseApiUrl = "backoffice/Api/Environment/";
 
@@ -12,10 +12,12 @@ function EnvironmentController($scope, $http, umbRequestHelper, clipboardService
 
     // Copy to clipboard functionality
     vm.copyToClipboard = function(text) {
-        clipboardService.copy(text)
+        navigator.clipboard.writeText(text)
             .then(function() {
                 notificationsService.success("Copied!", "Value copied to clipboard");
-            }, function() {
+            })
+            .catch(function(err) {
+                console.error('Failed to copy text: ', err);
                 notificationsService.error("Copy Failed", "Could not copy to clipboard");
             });
     };
