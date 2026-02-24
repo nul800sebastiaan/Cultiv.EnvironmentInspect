@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Cultiv.EnvironmentInspect\Cultiv.EnvironmentInspect.csproj" />
+  <Project Path="Cultiv.EnvironmentInspect.DemoSite\Cultiv.EnvironmentInspect.DemoSite.csproj" />
+</Solution>

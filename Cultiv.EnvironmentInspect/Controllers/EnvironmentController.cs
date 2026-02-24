@@ -1,80 +1,33 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
+using System.Threading.Tasks;
+using Cultiv.EnvironmentInspect.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Mvc;
 using Umbraco.Cms.Web.BackOffice.Controllers;
 using Umbraco.Cms.Web.Common.Authorization;
 
-namespace Cultiv.EnvironmentInspect.Site
+namespace Cultiv.EnvironmentInspect.Controllers
 {
     [Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]
     public class EnvironmentController : UmbracoAuthorizedJsonController
     {
-        private readonly IConfiguration _configuration;
+        private readonly IEnvironmentInspectService _environmentInspectService;
 
-        public EnvironmentController(IConfiguration configuration)
+        public EnvironmentController(IEnvironmentInspectService environmentInspectService)
         {
-            _configuration = configuration;
+            _environmentInspectService = environmentInspectService;
         }
         
-        public List<DebugViewModel> GetEnvironment()
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+        public async Task<EnvironmentInspectResponse> GetEnvironment()
         {
-            var debugViewModel = new List<DebugViewModel>();
-
-            if (_configuration is not IConfigurationRoot configurationRoot) return debugViewModel;
-            
-            // Adapted from https://github.com/dotnet/runtime/blob/main/src/libraries/Microsoft.Extensions.Configuration.Abstractions/src/ConfigurationRootExtensions.cs#L36
-            void RecurseChildren(IEnumerable<IConfigurationSection> children)
-            {
-                foreach (var child in children)
-                {
-                    var valueAndProvider = GetValueAndProvider(configurationRoot, child.Path);
-
-                    if (valueAndProvider.Provider != null)
-                    {
-                        debugViewModel.Add(new DebugViewModel
-                        {
-                            Key = child.Path,
-                            Value = valueAndProvider.Value,
-                            Provider = valueAndProvider.Provider.ToString(),
-                        });
-                    }
-                    else
-                    {
-                        debugViewModel.Add(new DebugViewModel
-                        {
-                            Key = child.Path
-                        });
-                    }
-
-                    RecurseChildren(child.GetChildren());
-                }
-            }
-
-            RecurseChildren(configurationRoot.GetChildren());
-
-            return debugViewModel;
+            return await _environmentInspectService.GetEnvironmentDataAsync();
         }
-        private static (string Value, IConfigurationProvider Provider) GetValueAndProvider(
-            IConfigurationRoot root,
-            string key)
-        {
-            foreach (var provider in root.Providers.Reverse())
-            {
-                if (provider.TryGet(key, out var value))
-                {
-                    return (value, provider);
-                }
-            }
+    }
 
-            return (null, null);
-        }
-        
-        public class DebugViewModel
-        {
-            public string Key { get; set; }
-            public string Value { get; set; }
-            public string Provider { get; set; }
-        }
+    public class EnvironmentInspectResponse
+    {
+        public List<EnvironmentVariable> Variables { get; set; } = new();
+        public bool AzureWebAppAdvancedCopy { get; set; }
     }
 }

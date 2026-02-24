@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <CultivEnvironmentInspectContentFilesPath>$(MSBuildThisFileDirectory)..\App_Plugins\Cultiv.EnvironmentInspect\**\*.*</CultivEnvironmentInspectContentFilesPath>
+        <CultivEnvironmentInspectSchemaFile>$(MSBuildThisFileDirectory)..\appsettings-schema.Cultiv.EnvironmentInspect.json</CultivEnvironmentInspectSchemaFile>
     </PropertyGroup>
 
     <Target Name="CopyCultivEnvironmentInspectAssets" BeforeTargets="Build">
@@ -15,6 +16,10 @@
             SkipUnchangedFiles="true" />
 
     </Target>
+
+    <ItemGroup>
+        <UmbracoJsonSchemaFiles Include="$(CultivEnvironmentInspectSchemaFile)" />
+    </ItemGroup>
 
     <Target Name="ClearCultivEnvironmentInspectAssets" BeforeTargets="Clean">
         <ItemGroup>

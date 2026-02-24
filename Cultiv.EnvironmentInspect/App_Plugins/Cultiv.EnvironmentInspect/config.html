@@ -1,19 +1,102 @@
 <div ng-controller="Cultiv.EnvironmentInspectController as vm">
-    <div class="umb-panel-group__details-status">
-        <div class="umb-panel-group__details-status-content">
-            <table class="table table-bordered table-condensed">
-                <tbody>
-                <tr style="background-color: #1b264f; color: white;">
-                    <th>Environment value path</th>
-                    <td>Provider / Value</td>
-                </tr>
-                <tr ng-repeat="environmentItem in vm.data">
-                    <th>{{ environmentItem.Key }}</th>
-                    <td style="overflow-wrap: anywhere;"><em style="font-size: 0.8em">{{ environmentItem.Provider }}</em> <br /> {{ environmentItem.Value || "&nbsp;" }}</td>
-                </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
+    <umb-box>
+        <umb-box-content>
+            <!-- Loading state -->
+            <div ng-if="vm.isLoading" class="text-center" style="padding: 40px;">
+                <umb-load-indicator></umb-load-indicator>
+            </div>
 
+            <!-- Main content -->
+            <div ng-if="!vm.isLoading">
+                <!-- Filter toggles -->
+                <div style="margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <umb-toggle
+                            checked="vm.excludeEmptyValues"
+                            on-click="vm.excludeEmptyValues = !vm.excludeEmptyValues">
+                        </umb-toggle>
+                        <label style="margin: 0; cursor: pointer;" ng-click="vm.excludeEmptyValues = !vm.excludeEmptyValues">Exclude empty values</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <umb-toggle
+                            checked="vm.onlyRedacted"
+                            disabled="!vm.hasAnyRedactions()"
+                            on-click="vm.onlyRedacted = !vm.onlyRedacted">
+                        </umb-toggle>
+                        <label style="margin: 0; cursor: pointer;" 
+                               ng-click="vm.hasAnyRedactions() && (vm.onlyRedacted = !vm.onlyRedacted)"
+                               title="{{ vm.hasAnyRedactions() ? '' : 'No redacted values available' }}">Only redacted</label>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <umb-toggle
+                            checked="vm.replaceColonWithUnderscore"
+                            on-click="vm.replaceColonWithUnderscore = !vm.replaceColonWithUnderscore">
+                        </umb-toggle>
+                        <label style="margin: 0; cursor: pointer;" ng-click="vm.replaceColonWithUnderscore = !vm.replaceColonWithUnderscore">Environment variable format (__ instead of :)</label>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <table class="table table-bordered table-condensed">
+                    <thead>
+                        <tr style="background-color: #1b264f;">
+                            <th style="width: 50%; color: white !important;">Environment value path</th>
+                            <th style="color: white !important;">Value / Provider</th>
+                            <th ng-if="vm.azureWebAppAdvancedCopy" style="width: 100px; text-align: center; color: white !important;">Azure</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="environmentItem in vm.data | filter:vm.filterVariables">
+                            <!-- Key column with copy button -->
+                            <td style="vertical-align: middle; position: relative;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                    <span style="flex: 1; word-break: break-word;">{{ vm.formatKey(environmentItem.Key) }}</span>
+                                    <button 
+                                        class="btn btn-xs"
+                                        title="Copy key to clipboard"
+                                        ng-click="vm.copyToClipboard(vm.formatKey(environmentItem.Key))"
+                                        style="flex-shrink: 0;">
+                                        📋
+                                    </button>
+                                </div>
+                            </td>
+                            
+                            <!-- Value column with copy button -->
+                            <td style="overflow-wrap: anywhere; vertical-align: middle; position: relative;">
+                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+                                    <div style="flex: 1;">
+                                        <em style="font-size: 0.8em">{{ environmentItem.Provider }}</em>
+                                        <br />
+                                        <span ng-if="environmentItem.RedactedMode" 
+                                              style="margin-right: 0.25rem;" 
+                                              title="Redacted: {{ environmentItem.RedactedMode }}">
+                                            {{ vm.getRedactionEmoji(environmentItem.RedactedMode) }}
+                                        </span>
+                                        <span>{{ environmentItem.Value || '&nbsp;' }}</span>
+                                    </div>
+                                    <button 
+                                        class="btn btn-xs"
+                                        title="Copy value to clipboard"
+                                        ng-click="vm.copyToClipboard(environmentItem.Value || '')"
+                                        style="flex-shrink: 0;">
+                                        📋
+                                    </button>
+                                </div>
+                            </td>
+                            
+                            <!-- Azure column (conditional) -->
+                            <td ng-if="vm.azureWebAppAdvancedCopy" style="text-align: center; vertical-align: middle;">
+                                <button 
+                                    class="btn btn-xs btn-primary"
+                                    title="Copy as Azure Web App JSON snippet"
+                                    ng-click="vm.copyToClipboard(vm.generateAzureSnippet(environmentItem.Key, environmentItem.Value || ''))">
+                                    ☁️
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </umb-box-content>
+    </umb-box>
 </div>
