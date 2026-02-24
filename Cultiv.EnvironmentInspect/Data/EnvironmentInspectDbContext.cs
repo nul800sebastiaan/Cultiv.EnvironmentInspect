@@ -21,7 +21,7 @@ internal class EnvironmentInspectDbContext : DbContext
             entity.ToTable("CultivEnvironmentInspectUserPreferences");
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => new { e.UserKey, e.SettingKey }).IsUnique();
-            entity.Property(e => e.UserKey).IsRequired();
+            entity.Property(e => e.UserKey).IsRequired().HasMaxLength(50);
             entity.Property(e => e.SettingKey).IsRequired().HasMaxLength(500);
             entity.Property(e => e.IsStarred).IsRequired();
             entity.Property(e => e.CreatedDate).IsRequired();

@@ -18,7 +18,7 @@ namespace Cultiv.EnvironmentInspect.Migrations
                     Id = table.Column<int>(nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1")
                         .Annotation("Sqlite:Autoincrement", true),
-                    UserKey = table.Column<string>(nullable: false),
+                    UserKey = table.Column<string>(maxLength: 50, nullable: false),
                     SettingKey = table.Column<string>(maxLength: 500, nullable: false),
                     IsStarred = table.Column<bool>(nullable: false),
                     StringValue = table.Column<string>(maxLength: 2000, nullable: true),

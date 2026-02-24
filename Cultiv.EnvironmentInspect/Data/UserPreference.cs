@@ -8,6 +8,7 @@ internal class UserPreference
     public int Id { get; set; }
     
     [Required]
+    [MaxLength(50)]
     public required string UserKey { get; set; }
     
     [Required]

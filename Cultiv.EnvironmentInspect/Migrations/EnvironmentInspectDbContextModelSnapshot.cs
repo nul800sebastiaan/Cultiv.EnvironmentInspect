@@ -36,7 +36,8 @@ namespace Cultiv.EnvironmentInspect.Migrations
                         .HasMaxLength(2000);
 
                     b.Property<string>("UserKey")
-                        .IsRequired();
+                        .IsRequired()
+                        .HasMaxLength(50);
 
                     b.HasKey("Id");
 
