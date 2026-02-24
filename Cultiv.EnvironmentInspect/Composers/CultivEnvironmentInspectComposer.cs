@@ -91,6 +91,11 @@ namespace Cultiv.EnvironmentInspect.Composers
                 {
                     options.UseSqlServer(connectionString);
                 }
+                
+                // Suppress pending model changes warning - the migration works on both SQLite and SQL Server
+                // despite provider-specific differences in the generated SQL
+                options.ConfigureWarnings(warnings =>
+                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
             
             // Register operation ID handler for Swagger
