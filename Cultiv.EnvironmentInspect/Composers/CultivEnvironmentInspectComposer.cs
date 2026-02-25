@@ -91,6 +91,12 @@ namespace Cultiv.EnvironmentInspect.Composers
                 {
                     options.UseSqlServer(connectionString);
                 }
+                
+                // Suppress pending model changes warning - necessary for cross-database compatibility
+                // The migration uses SQL Server types (nvarchar, datetime2) which work on both providers
+                // but SQLite sees them as mismatches since it expects TEXT/INTEGER types
+                options.ConfigureWarnings(warnings =>
+                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
             
             // Register operation ID handler for Swagger
