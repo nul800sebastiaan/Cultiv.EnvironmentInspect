@@ -11,11 +11,15 @@ env:
 
 on:
   push:
-    branches: [ "develop/v2", "release/v2" ]
+    branches: 
+      - "develop/v2"
+      - "release/v2"
+      - "feature/v2/**"
   pull_request:
     branches:
-    - develop/v2
-    - release/v2
+      - develop/v2
+      - release/v2
+      - feature/v2/**
   workflow_dispatch:
 
 jobs:
@@ -158,8 +162,102 @@ jobs:
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
     
+    - name: Upload NuGet Package for Testing
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: |
+          ${{ env.PATH_TO_EXTENSION }}/bin/Release/*.nupkg
+          ${{ env.PATH_TO_EXTENSION }}/bin/Release/*.snupkg
+        retention-days: 1
+    
     - name: Install Package Validation Tool
       run: dotnet tool install -g dotnet-validate --prerelease
     
     - name: Validate NuGet Package
       run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
+  
+  test-sqlserver:
+    name: Test with SQL Server LocalDB
+    runs-on: windows-latest
+    needs: [setup, build]
+    timeout-minutes: 3
+    steps:
+    - uses: actions/checkout@v5
+    
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Download NuGet Package
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package
+        path: ./nuget-packages
+    
+    - name: Add Local NuGet Source
+      run: dotnet nuget add source "${{ github.workspace }}/nuget-packages" --name "LocalPackages"
+    
+    - name: Replace ProjectReference with PackageReference
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: |
+        dotnet remove reference ../Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source LocalPackages
+    
+    - name: Update Connection String to LocalDB
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $appsettings = Get-Content "appsettings.json" -Raw | ConvertFrom-Json
+        $appsettings.ConnectionStrings.umbracoDbDSN = "Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename=|DataDirectory|\Umbraco.mdf;Integrated Security=True"
+        $appsettings.ConnectionStrings.umbracoDbDSN_ProviderName = "Microsoft.Data.SqlClient"
+        $appsettings | ConvertTo-Json -Depth 10 | Set-Content "appsettings.json"
+    
+    - name: Restore and Build with NuGet Package
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: dotnet build -c Release
+    
+    - name: Start Application with LocalDB
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
+        echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
+        Start-Sleep -Seconds 15
+    
+    - name: Check for Migration Errors
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $logs = Get-Content "../app.log", "../app-errors.log" -ErrorAction SilentlyContinue
+        $errors = $logs | Select-String -Pattern "ERR|FTL|migration.*fail|PendingModelChanges" -CaseSensitive:$false
+        if ($errors) {
+          Write-Host "::error::Migration errors detected:"
+          $errors | ForEach-Object { Write-Host $_ }
+          exit 1
+        }
+        $success = $logs | Select-String -Pattern "migrations completed|No pending migrations" -CaseSensitive:$false
+        if ($success) {
+          Write-Host "✓ SQL Server migrations successful"
+        } else {
+          Write-Host "::warning::Could not verify migration success"
+        }
+    
+    - name: Stop Application
+      if: always()
+      shell: pwsh
+      run: |
+        if ($env:DOTNET_PID) {
+          Stop-Process -Id $env:DOTNET_PID -Force -ErrorAction SilentlyContinue
+        }
+    
+    - name: Upload Logs on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sqlserver-logs
+        path: |
+          app.log
+          app-errors.log
+          ${{ env.PATH_TO_TESTSITE }}/umbraco/Logs/
+        retention-days: 3
