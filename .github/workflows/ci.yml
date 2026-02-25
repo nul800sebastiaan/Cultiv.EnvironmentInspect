@@ -113,8 +113,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
-        key: nuget-cache-${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj*') }}
+        key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
         restore-keys: |
+          nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
           nuget-cache-${{ runner.os }}-nuget-
 
     - name: Update Version Files
@@ -181,13 +182,22 @@ jobs:
     name: Test with SQL Server LocalDB
     runs-on: windows-latest
     needs: [setup, build]
-    timeout-minutes: 3
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@v5
     
     - uses: actions/setup-dotnet@v5
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
+        restore-keys: |
+          nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
+          nuget-cache-${{ runner.os }}-nuget-
     
     - name: Download NuGet Package
       uses: actions/download-artifact@v4
