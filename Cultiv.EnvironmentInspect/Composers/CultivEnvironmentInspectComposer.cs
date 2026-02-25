@@ -14,14 +14,15 @@ using Umbraco.Cms.Core.DependencyInjection;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Api.Common.OpenApi;
 using Umbraco.Cms.Core.Notifications;
-using Umbraco.Cms.Infrastructure.Persistence;
 using Umbraco.Cms.Core.Configuration.Models;
+using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.NotificationHandlers;
 using Cultiv.EnvironmentInspect.Services;
 using Cultiv.EnvironmentInspect.Data;
 using Cultiv.EnvironmentInspect.Migrations;
+using Cultiv.EnvironmentInspect.BackgroundJobs;
 
 namespace Cultiv.EnvironmentInspect.Composers
 {
@@ -107,6 +108,9 @@ namespace Cultiv.EnvironmentInspect.Composers
             
             // Run database migrations on application startup
             builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, RunUserPreferencesMigration>();
+            
+            // Register weekly cleanup job for orphaned user preferences (distributed - runs on one server only)
+            builder.Services.AddSingleton<IDistributedBackgroundJob, UserPreferencesCleanupJob>();
 
             builder.Services.Configure<SwaggerGenOptions>(opt =>
             {

@@ -2,7 +2,9 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Umbraco.Cms.Core.Cache;
+
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.Controllers;
 

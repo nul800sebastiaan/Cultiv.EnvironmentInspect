@@ -1,5 +1,3 @@
-using Cultiv.EnvironmentInspect.Data;
-
 namespace Cultiv.EnvironmentInspect.Services;
 
 public interface IUserPreferencesService
