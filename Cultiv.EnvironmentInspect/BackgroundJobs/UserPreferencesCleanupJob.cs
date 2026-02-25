@@ -39,14 +39,9 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
     public string Name => "Cultiv.EnvironmentInspect.UserPreferencesCleanup";
 
     /// <summary>
-    /// Runs once per week
+    /// Runs once per week. First execution occurs one period after registration.
     /// </summary>
     public TimeSpan Period => TimeSpan.FromDays(7);
-
-    /// <summary>
-    /// Delays first run by 5 minutes after application start
-    /// </summary>
-    public TimeSpan Delay => TimeSpan.FromMinutes(5);
 
     public async Task ExecuteAsync()
     {
