@@ -133,7 +133,7 @@ jobs:
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
       run: |
-        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
+        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
         echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
         Start-Sleep -Seconds 10
 
@@ -149,6 +149,11 @@ jobs:
       shell: pwsh
       run: |
          Stop-Process -Id $env:DOTNET_PID
+         
+    - name: Check for Migration Errors
+      shell: pwsh
+      run: |
+        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
          
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
@@ -177,6 +182,17 @@ jobs:
     
     - name: Validate NuGet Package
       run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
+    
+    - name: Upload Logs on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sqlite-logs
+        path: |
+          app.log
+          app-errors.log
+          ${{ env.PATH_TO_TESTSITE }}/umbraco/Logs/
+        retention-days: 3
   
   test-sqlserver:
     name: Test with SQL Server LocalDB
@@ -261,42 +277,9 @@ jobs:
         Start-Sleep -Seconds 60
     
     - name: Check for Migration Errors
-      working-directory: ${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
       run: |
-        $logs = Get-Content "../app.log", "../app-errors.log" -ErrorAction SilentlyContinue
-        
-        # Check for successful migration completion first
-        $cultivMigrationSuccess = $logs | Select-String -Pattern "Cultiv Environment Inspect migrations completed successfully" -CaseSensitive:$false
-        $umbracoInstallSuccess = $logs | Select-String -Pattern "Unattended install completed" -CaseSensitive:$false
-        
-        # Look for errors AFTER the installation started (exclude initial connection check errors)
-        $installStartIndex = 0
-        for ($i = 0; $i -lt $logs.Count; $i++) {
-          if ($logs[$i] -match "Starting unattended install") {
-            $installStartIndex = $i
-            break
-          }
-        }
-        
-        $postInstallLogs = $logs[$installStartIndex..($logs.Count - 1)]
-        $errors = $postInstallLogs | Select-String -Pattern "\[ERR\]|\[FTL\]|migration.*fail|PendingModelChanges" -CaseSensitive:$false
-        
-        if ($errors) {
-          Write-Host "::error::Migration errors detected after installation started:"
-          $errors | ForEach-Object { Write-Host $_ }
-          exit 1
-        }
-        
-        if ($cultivMigrationSuccess -and $umbracoInstallSuccess) {
-          Write-Host "✓ SQL Server migrations successful"
-          Write-Host "✓ Umbraco install completed"
-          Write-Host "✓ Cultiv.EnvironmentInspect migrations completed"
-        } else {
-          Write-Host "::warning::Could not verify all migrations completed successfully"
-          if (-not $umbracoInstallSuccess) { Write-Host "  - Umbraco install not confirmed" }
-          if (-not $cultivMigrationSuccess) { Write-Host "  - Cultiv migrations not confirmed" }
-        }
+        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
     
     - name: Stop Application
       if: always()
@@ -307,7 +290,7 @@ jobs:
         }
     
     - name: Upload Logs on Failure
-      # if: failure()
+      if: failure()
       uses: actions/upload-artifact@v4
       with:
         name: sqlserver-logs
