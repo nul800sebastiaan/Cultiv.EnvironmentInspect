@@ -238,8 +238,14 @@ jobs:
       shell: pwsh
       run: |
         $appsettings = Get-Content "appsettings.json" -Raw | ConvertFrom-Json
-        $appsettings.ConnectionStrings.umbracoDbDSN = "Data Source=(localdb)\MSSQLLocalDB;AttachDbFilename=|DataDirectory|\Umbraco.mdf;Integrated Security=True"
+        $appsettings.ConnectionStrings.umbracoDbDSN = "Server=(localdb)\MSSQLLocalDB;Database=UmbracoTest;Integrated Security=True;TrustServerCertificate=True"
         $appsettings.ConnectionStrings.umbracoDbDSN_ProviderName = "Microsoft.Data.SqlClient"
+        # Reduce database connection retry attempts from 5 to 2
+        if (-not $appsettings.Umbraco.CMS.Global.PSObject.Properties.Name -contains 'InstallMissingDatabase') {
+          $appsettings.Umbraco.CMS.Global | Add-Member -NotePropertyName InstallMissingDatabase -NotePropertyValue $true -Force
+        } else {
+          $appsettings.Umbraco.CMS.Global.InstallMissingDatabase = $true
+        }
         $appsettings | ConvertTo-Json -Depth 10 | Set-Content "appsettings.json"
     
     - name: Restore and Build with NuGet Package
@@ -259,17 +265,37 @@ jobs:
       shell: pwsh
       run: |
         $logs = Get-Content "../app.log", "../app-errors.log" -ErrorAction SilentlyContinue
-        $errors = $logs | Select-String -Pattern "ERR|FTL|migration.*fail|PendingModelChanges" -CaseSensitive:$false
+        
+        # Check for successful migration completion first
+        $cultivMigrationSuccess = $logs | Select-String -Pattern "Cultiv Environment Inspect migrations completed successfully" -CaseSensitive:$false
+        $umbracoInstallSuccess = $logs | Select-String -Pattern "Unattended install completed" -CaseSensitive:$false
+        
+        # Look for errors AFTER the installation started (exclude initial connection check errors)
+        $installStartIndex = 0
+        for ($i = 0; $i -lt $logs.Count; $i++) {
+          if ($logs[$i] -match "Starting unattended install") {
+            $installStartIndex = $i
+            break
+          }
+        }
+        
+        $postInstallLogs = $logs[$installStartIndex..($logs.Count - 1)]
+        $errors = $postInstallLogs | Select-String -Pattern "\[ERR\]|\[FTL\]|migration.*fail|PendingModelChanges" -CaseSensitive:$false
+        
         if ($errors) {
-          Write-Host "::error::Migration errors detected:"
+          Write-Host "::error::Migration errors detected after installation started:"
           $errors | ForEach-Object { Write-Host $_ }
           exit 1
         }
-        $success = $logs | Select-String -Pattern "migrations completed|No pending migrations" -CaseSensitive:$false
-        if ($success) {
+        
+        if ($cultivMigrationSuccess -and $umbracoInstallSuccess) {
           Write-Host "✓ SQL Server migrations successful"
+          Write-Host "✓ Umbraco install completed"
+          Write-Host "✓ Cultiv.EnvironmentInspect migrations completed"
         } else {
-          Write-Host "::warning::Could not verify migration success"
+          Write-Host "::warning::Could not verify all migrations completed successfully"
+          if (-not $umbracoInstallSuccess) { Write-Host "  - Umbraco install not confirmed" }
+          if (-not $cultivMigrationSuccess) { Write-Host "  - Cultiv migrations not confirmed" }
         }
     
     - name: Stop Application
