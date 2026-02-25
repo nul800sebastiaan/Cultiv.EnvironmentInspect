@@ -195,14 +195,11 @@ jobs:
         name: nuget-package
         path: ./nuget-packages
     
-    - name: Add Local NuGet Source
-      run: dotnet nuget add source "${{ github.workspace }}/nuget-packages" --name "LocalPackages"
-    
     - name: Replace ProjectReference with PackageReference
       working-directory: ${{ env.PATH_TO_TESTSITE }}
       run: |
         dotnet remove reference ../Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj
-        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source LocalPackages
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source "${{ github.workspace }}/nuget-packages"
     
     - name: Update Connection String to LocalDB
       working-directory: ${{ env.PATH_TO_TESTSITE }}
