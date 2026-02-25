@@ -195,11 +195,33 @@ jobs:
         name: nuget-package
         path: ./nuget-packages
     
+    - name: Configure NuGet with Package Source Mapping
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <packageSources>
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+            <add key="LocalPackages" value="${{ github.workspace }}/nuget-packages" />
+          </packageSources>
+          <packageSourceMapping>
+            <packageSource key="LocalPackages">
+              <package pattern="Cultiv.EnvironmentInspect" />
+            </packageSource>
+            <packageSource key="nuget.org">
+              <package pattern="*" />
+            </packageSource>
+          </packageSourceMapping>
+        </configuration>
+        "@ | Set-Content nuget.config
+    
     - name: Replace ProjectReference with PackageReference
       working-directory: ${{ env.PATH_TO_TESTSITE }}
       run: |
         dotnet remove reference ../Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj
-        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source "${{ github.workspace }}/nuget-packages"
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }}
     
     - name: Update Connection String to LocalDB
       working-directory: ${{ env.PATH_TO_TESTSITE }}
