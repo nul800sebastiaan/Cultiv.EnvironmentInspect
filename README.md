@@ -14,13 +14,14 @@ This makes it easier to learn why some variables you expected to work have not b
 ## Features
 
 - 📊 **View all configuration values** and their sources in the Umbraco backoffice
+- ⭐ **Star favorites** - Pin important configuration keys to the top for quick access (per-user preference)
 - 🔒 **Redact sensitive data** with multiple redaction modes (Full, Partial, Advanced)
 - 🎯 **Exclude configuration keys** using regex patterns
 - 🔐 **Provider-based filtering** - match by provider type, source file, or full name
-- � **Copy keys and values** with one-click clipboard support and notifications
+- 📋 **Copy keys and values** with one-click clipboard support and notifications
 - ☁️ **Azure Web App JSON export** - copy configuration as ready-to-use Azure Web App JSON snippets
 - 🔄 **Environment variable format** - convert keys from `Umbraco:CMS:Setting` to `UMBRACO__CMS__SETTING`
-- �🚀 **Performance optimized** with runtime caching and change detection
+- 🚀 **Performance optimized** with runtime caching and change detection
 - 🔄 **Hot reload support** - configuration changes are automatically applied
 
 ## Installation
@@ -47,6 +48,7 @@ That's it! The package works out of the box with no configuration required.
 
 ### Dashboard Features
 
+- **Star favorites** ⭐ - Mark important configuration keys as favorites to keep them pinned at the top of the list (per-user preference)
 - **Copy buttons** - One-click clipboard copy for keys and values with success notifications
 - **Filter options** - Toggle to exclude empty values, show only redacted items, or convert keys to environment variable format
 - **Azure Web App export** - Enable `AzureWebAppAdvancedCopy` to get a ☁️ button that copies Azure-ready JSON snippets
