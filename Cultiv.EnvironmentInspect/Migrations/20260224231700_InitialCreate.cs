@@ -20,7 +20,7 @@ namespace Cultiv.EnvironmentInspect.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     UserKey = table.Column<string>(type: "nvarchar(50)", nullable: false),
                     SettingKey = table.Column<string>(type: "nvarchar(250)", nullable: false),
-                    IsStarred = table.Column<bool>(nullable: false),
+                    IsStarred = table.Column<bool>(type: "bit", nullable: false),
                     StringValue = table.Column<string>(type: "nvarchar(2000)", nullable: true),
                     CreatedDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ModifiedDate = table.Column<DateTime>(type: "datetime2", nullable: false)
