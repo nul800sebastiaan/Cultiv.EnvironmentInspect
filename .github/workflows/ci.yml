@@ -242,7 +242,7 @@ jobs:
       run: |
         $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
         echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
-        Start-Sleep -Seconds 15
+        Start-Sleep -Seconds 60
     
     - name: Check for Migration Errors
       working-directory: ${{ env.PATH_TO_TESTSITE }}
