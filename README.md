@@ -15,7 +15,7 @@ This makes it easier to learn why some variables you expected to work have not b
 
 - 📊 **View all configuration values** and their sources in the Umbraco backoffice
 - ⭐ **Star favorites** - Pin important configuration keys to the top for quick access (per-user preference)
-- � **Real-time search** - Filter configuration entries by key, value, or provider name
+- 🔍 **Search filter** - Filter configuration entries by key, value, or provider name
 - 🔒 **Redact sensitive data** with multiple redaction modes (Full, Partial, Advanced)
 - 🎯 **Exclude configuration keys** using regex patterns
 - 🔐 **Provider-based filtering** - match by provider type, source file, or full name
