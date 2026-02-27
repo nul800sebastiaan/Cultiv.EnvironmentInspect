@@ -533,7 +533,9 @@ Enable the Azure Web App advanced copy feature to export configuration as Azure-
 }
 ```
 
-When enabled, an additional "Azure" column appears with a ☁️ button. Clicking it copies a JSON snippet formatted for Azure Web App configuration:
+When enabled, an additional "Azure" column appears in the dashboard with a ☁️ button for each configuration entry. You can toggle the column visibility using the "Show Azure column" option in the settings popover (⚙️).
+
+Clicking the ☁️ button copies a JSON snippet formatted for Azure Web App configuration:
 
 ```json
 {
@@ -549,13 +551,40 @@ This format can be directly imported into:
 - ARM templates
 - Bicep files
 
-### Filter Options
+### Dashboard UI Features
 
-The dashboard includes toggles for real-time filtering:
+#### Star Favorites ⭐
+Click the star button next to any configuration key to mark it as a favorite. Starred items:
+- Are pinned to the top of the list for quick access
+- Are saved per-user (each user has their own starred items)
+- Persist across browser sessions
 
-- **Exclude empty values** (default: on) - Hide entries with null or empty values
-- **Only redacted** - Show only values that have been redacted
-- **Environment variable format** - Convert `:` to `__` in all keys (e.g., `Umbraco:CMS:Global` → `UMBRACO__CMS__GLOBAL`)
+#### Search Filter 🔍
+Use the search input to filter configuration entries in real-time by:
+- Configuration key name
+- Configuration value
+- Provider name
+
+The search is case-insensitive and filters as you type.
+
+#### Settings Popover ⚙️
+Click the settings (⚙️) button to access display options:
+
+- **Environment variable format** - Toggle between `:` and `__` notation
+  - Off: `Umbraco:CMS:Global:Id`
+  - On: `UMBRACO__CMS__GLOBAL__ID`
+- **Show Azure column** (only visible when `AzureWebAppAdvancedCopy` is enabled) - Toggle the Azure ☁️ column visibility
+
+All settings are saved per-user and persist across sessions.
+
+#### Filter Toggles
+Quick filter toggles to refine the displayed configuration:
+
+- **Exclude empty values** - Hide entries with null or empty values
+- **Only redacted** - Show only values that have been redacted (disabled if no redacted values exist)
+- **⭐ Only starred** - Show only your starred favorites (disabled if you haven't starred any items)
+
+Filter states are saved per-user and persist across sessions. Filters are automatically disabled when no matching items exist to prevent accidentally hiding all data.
 
 ## Regex Pattern Tips
 

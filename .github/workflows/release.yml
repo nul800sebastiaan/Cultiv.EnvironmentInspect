@@ -17,6 +17,11 @@ on:
         required: false
         type: boolean
         default: false
+      create_github_release:
+        description: 'Create GitHub Release'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   setup:
@@ -103,8 +108,9 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
-        key: nuget-cache-${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj*') }}
+        key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
         restore-keys: |
+          nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
           nuget-cache-${{ runner.os }}-nuget-
 
     - name: Update Version Files
@@ -122,7 +128,7 @@ jobs:
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
       shell: pwsh
       run: |
-        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru
+        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
         echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
         Start-Sleep -Seconds 10
 
@@ -139,6 +145,11 @@ jobs:
       run: |
          Stop-Process -Id $env:DOTNET_PID
          
+    - name: Check for Migration Errors
+      shell: pwsh
+      run: |
+        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+         
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
@@ -152,16 +163,162 @@ jobs:
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
     
+    - name: Upload NuGet Package for Testing
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: |
+          ${{ env.PATH_TO_EXTENSION }}/bin/Release/*.nupkg
+          ${{ env.PATH_TO_EXTENSION }}/bin/Release/*.snupkg
+        retention-days: 1
+    
+    - name: Upload Logs on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sqlite-logs
+        path: |
+          app.log
+          app-errors.log
+          ${{ env.PATH_TO_TESTSITE }}/umbraco/Logs/
+        retention-days: 3
+  
+  test-sqlserver:
+    name: Test with SQL Server LocalDB
+    runs-on: windows-latest
+    needs: [setup, build]
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v5
+    
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Cache NuGet
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
+        restore-keys: |
+          nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
+          nuget-cache-${{ runner.os }}-nuget-
+    
+    - name: Download NuGet Package
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package
+        path: ./nuget-packages
+    
+    - name: Configure NuGet with Package Source Mapping
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        @"
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <packageSources>
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
+            <add key="LocalPackages" value="${{ github.workspace }}/nuget-packages" />
+          </packageSources>
+          <packageSourceMapping>
+            <packageSource key="LocalPackages">
+              <package pattern="Cultiv.EnvironmentInspect" />
+            </packageSource>
+            <packageSource key="nuget.org">
+              <package pattern="*" />
+            </packageSource>
+          </packageSourceMapping>
+        </configuration>
+        "@ | Set-Content nuget.config
+    
+    - name: Replace ProjectReference with PackageReference
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: |
+        dotnet remove reference ../Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }}
+    
+    - name: Update Connection String to LocalDB
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $appsettings = Get-Content "appsettings.json" -Raw | ConvertFrom-Json
+        $appsettings.ConnectionStrings.umbracoDbDSN = "Server=(localdb)\MSSQLLocalDB;Database=UmbracoTest;Integrated Security=True;TrustServerCertificate=True"
+        $appsettings.ConnectionStrings.umbracoDbDSN_ProviderName = "Microsoft.Data.SqlClient"
+        # Reduce database connection retry attempts from 5 to 2
+        if (-not $appsettings.Umbraco.CMS.Global.PSObject.Properties.Name -contains 'InstallMissingDatabase') {
+          $appsettings.Umbraco.CMS.Global | Add-Member -NotePropertyName InstallMissingDatabase -NotePropertyValue $true -Force
+        } else {
+          $appsettings.Umbraco.CMS.Global.InstallMissingDatabase = $true
+        }
+        $appsettings | ConvertTo-Json -Depth 10 | Set-Content "appsettings.json"
+    
+    - name: Restore and Build with NuGet Package
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      run: dotnet build -c Release
+    
+    - name: Start Application with LocalDB
+      working-directory: ${{ env.PATH_TO_TESTSITE }}
+      shell: pwsh
+      run: |
+        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
+        echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
+        Start-Sleep -Seconds 60
+    
+    - name: Check for Migration Errors
+      shell: pwsh
+      run: |
+        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+    
+    - name: Stop Application
+      if: always()
+      shell: pwsh
+      run: |
+        if ($env:DOTNET_PID) {
+          Stop-Process -Id $env:DOTNET_PID -Force -ErrorAction SilentlyContinue
+        }
+    
+    - name: Upload Logs on Failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: sqlserver-logs
+        path: |
+          app.log
+          app-errors.log
+          ${{ env.PATH_TO_TESTSITE }}/umbraco/Logs/
+        retention-days: 3
+    
+  publish:
+    name: Publish Package
+    runs-on: ubuntu-latest
+    needs: [setup, build, test-sqlserver]
+    timeout-minutes: 5
+    env:
+      MYGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
+    steps:
+    - uses: actions/checkout@v5
+    
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Download NuGet Package
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package
+        path: ./nuget-packages
+    
     - name: Install Package Validation Tool
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
       run: dotnet tool install -g dotnet-validate --prerelease
     
     - name: Validate NuGet Package
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet validate package local ${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg
+      run: dotnet validate package local nuget-packages/Cultiv.EnvironmentInspect.*.nupkg
     
     - name: Create GitHub Release
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
@@ -181,18 +338,18 @@ jobs:
 
     - name: Push GitHub Package
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
+      run: dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
     
     - name: Push MyGet Package
       if: needs.setup.outputs.new_release_published == 'true' && env.MYGET_API_KEY != ''
       run: |
-        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
-        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
       
     - name: Push to Nuget.org
       if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && startsWith(github.ref, 'refs/heads/release/') && !contains(needs.setup.outputs.semver, '-') }}
       run: |
-        dotnet nuget push "${{ env.PATH_TO_EXTENSION }}/bin/Release/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
     - name: Merge release branch to develop
       if: ${{ needs.setup.outputs.new_release_published == 'true' && startsWith(github.ref, 'refs/heads/release/') }}
