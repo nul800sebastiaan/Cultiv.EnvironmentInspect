@@ -20,4 +20,5 @@ public class UISettingsDto
     public bool OnlyRedacted { get; set; } = false;
     public bool OnlyStarred { get; set; } = false;
     public bool ReplaceColonWithUnderscore { get; set; } = false;
+    public bool ShowAzureColumn { get; set; } = false;
 }

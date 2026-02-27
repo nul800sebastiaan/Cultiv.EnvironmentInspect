@@ -47,6 +47,9 @@ internal class UserPreferencesService : IUserPreferencesService
                     case "_ui_replaceColonWithUnderscore":
                         uiSettings.ReplaceColonWithUnderscore = boolValue;
                         break;
+                    case "_ui_showAzureColumn":
+                        uiSettings.ShowAzureColumn = boolValue;
+                        break;
                 }
             }
         }
@@ -145,7 +148,8 @@ internal class UserPreferencesService : IUserPreferencesService
             { "_ui_excludeEmptyValues", uiSettings.ExcludeEmptyValues },
             { "_ui_onlyRedacted", uiSettings.OnlyRedacted },
             { "_ui_onlyStarred", uiSettings.OnlyStarred },
-            { "_ui_replaceColonWithUnderscore", uiSettings.ReplaceColonWithUnderscore }
+            { "_ui_replaceColonWithUnderscore", uiSettings.ReplaceColonWithUnderscore },
+            { "_ui_showAzureColumn", uiSettings.ShowAzureColumn }
         };
 
         foreach (var (key, value) in settingsMap)

@@ -15,12 +15,25 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() onlyStarred: boolean = false;
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
+  @state() showAzureColumn: boolean = false; // User preference to show/hide Azure column
+  @state() settingsPopoverOpen: boolean = false;
+  @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   private togglingStar: Set<string> = new Set(); // Track in-flight toggle requests
   private readonly incrementSize: number = 50;
 
   get filteredVariables(): EnvironmentVariable[] {
     let filtered = this.environmentVariables;
+    
+    // Filter by search text
+    if (this.filterText) {
+      const searchLower = this.filterText.toLowerCase();
+      filtered = filtered.filter(v => 
+        v.key?.toLowerCase().includes(searchLower) || 
+        v.value?.toLowerCase().includes(searchLower) ||
+        v.provider?.toLowerCase().includes(searchLower)
+      );
+    }
     
     // Filter out empty values if enabled
     if (this.excludeEmptyValues) {
@@ -156,6 +169,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
   }
 
+  closeSettingsPopover() {
+    this.settingsPopoverOpen = false;
+  }
+
   render() {
     return html`
       ${when(this.isLoading, 
@@ -166,49 +183,103 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         `,
         () => html`
           <div class="filter-container">
-            <div class="toggle-item">
-              <uui-toggle
-                ?checked=${this.excludeEmptyValues}
-                @change=${(e: CustomEvent) => {
-                  this.excludeEmptyValues = (e.target as any).checked;
-                  this.saveUISettings();
-                }}>
-              </uui-toggle>
-              <label>Exclude empty values</label>
+            <div class="settings-section">
+              <uui-popover 
+                id="settings-popover" 
+                ?open=${this.settingsPopoverOpen} 
+                placement="bottom-start"
+                @close=${() => this.closeSettingsPopover()}>
+                <uui-button
+                  slot="trigger"
+                  look="outline"
+                  label="Settings"
+                  compact
+                  title="Display settings"
+                  @click=${() => this.settingsPopoverOpen = !this.settingsPopoverOpen}>
+                  ⚙️
+                </uui-button>
+                <div slot="popover" class="settings-popover-content" @click=${(e: Event) => e.stopPropagation()}>
+                  <div class="settings-header">Display Settings</div>
+                  <div class="toggle-item">
+                    <uui-toggle
+                      ?checked=${this.replaceColonWithUnderscore}
+                      @change=${(e: CustomEvent) => {
+                        this.replaceColonWithUnderscore = (e.target as any).checked;
+                        this.saveUISettings();
+                      }}>
+                    </uui-toggle>
+                    <label @click=${() => this.replaceColonWithUnderscore = !this.replaceColonWithUnderscore}>
+                      Environment variable format<br/>(<code>__</code> instead of <code>:</code>)
+                    </label>
+                  </div>
+                  ${when(this.azureWebAppAdvancedCopy, () => html`
+                    <div class="toggle-item">
+                      <uui-toggle
+                        ?checked=${this.showAzureColumn}
+                        @change=${(e: CustomEvent) => {
+                          this.showAzureColumn = (e.target as any).checked;
+                          this.saveUISettings();
+                        }}>
+                      </uui-toggle>
+                      <label @click=${() => this.showAzureColumn = !this.showAzureColumn}>
+                        Enable Azure-ready JSON snippets
+                      </label>
+                    </div>
+                  `)}
+                </div>
+              </uui-popover>
             </div>
-            <div class="toggle-item">
-              <uui-toggle
-                ?checked=${this.onlyRedacted}
-                ?disabled=${!this.hasAnyRedactions}
-                title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
-                @change=${(e: CustomEvent) => {
-                  this.onlyRedacted = (e.target as any).checked;
-                  this.saveUISettings();
-                }}>
-              </uui-toggle>
-              <label>Only redacted</label>
+            <div class="filters-section">
+              <div class="toggle-item">
+                <uui-toggle
+                  ?checked=${this.excludeEmptyValues}
+                  @change=${(e: CustomEvent) => {
+                    this.excludeEmptyValues = (e.target as any).checked;
+                    this.saveUISettings();
+                  }}>
+                </uui-toggle>
+                <label @click=${() => { this.excludeEmptyValues = !this.excludeEmptyValues; this.saveUISettings(); }}>
+                  Exclude empty values
+                </label>
+              </div>
+              <div class="toggle-item">
+                <uui-toggle
+                  ?checked=${this.onlyRedacted}
+                  ?disabled=${!this.hasAnyRedactions}
+                  title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
+                  @change=${(e: CustomEvent) => {
+                    this.onlyRedacted = (e.target as any).checked;
+                    this.saveUISettings();
+                  }}>
+                </uui-toggle>
+                <label @click=${() => { if (this.hasAnyRedactions) { this.onlyRedacted = !this.onlyRedacted; this.saveUISettings(); } }}>
+                  Only redacted
+                </label>
+              </div>
+              <div class="toggle-item">
+                <uui-toggle
+                  ?checked=${this.onlyStarred}
+                  ?disabled=${!this.hasAnyStarred}
+                  title=${this.hasAnyStarred ? '' : 'No starred settings available'}
+                  @change=${(e: CustomEvent) => {
+                    this.onlyStarred = (e.target as any).checked;
+                    this.saveUISettings();
+                  }}>
+                </uui-toggle>
+                <label @click=${() => { if (this.hasAnyStarred) { this.onlyStarred = !this.onlyStarred; this.saveUISettings(); } }}>
+                  ⭐ Only starred
+                </label>
+              </div>
             </div>
-            <div class="toggle-item">
-              <uui-toggle
-                ?checked=${this.onlyStarred}
-                ?disabled=${!this.hasAnyStarred}
-                title=${this.hasAnyStarred ? '' : 'No starred settings available'}
-                @change=${(e: CustomEvent) => {
-                  this.onlyStarred = (e.target as any).checked;
-                  this.saveUISettings();
+            <div class="search-section">
+              <uui-input
+                placeholder="Type to filter..."
+                .value=${this.filterText}
+                @input=${(e: InputEvent) => {
+                  this.filterText = (e.target as HTMLInputElement).value;
                 }}>
-              </uui-toggle>
-              <label>⭐ Only starred</label>
-            </div>
-            <div class="toggle-item">
-              <uui-toggle
-                ?checked=${this.replaceColonWithUnderscore}
-                @change=${(e: CustomEvent) => {
-                  this.replaceColonWithUnderscore = (e.target as any).checked;
-                  this.saveUISettings();
-                }}>
-              </uui-toggle>
-              <label>Environment variable format (__ instead of :)</label>
+                <uui-icon name="search" slot="prepend"></uui-icon>
+              </uui-input>
             </div>
           </div>
           <div class="content-container" @scroll=${this.handleScroll}>          
@@ -220,7 +291,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                 <uui-table-head-cell style="width: 40px; text-align: center;">⭐</uui-table-head-cell>
                 <uui-table-head-cell>Environment value path</uui-table-head-cell>
                 <uui-table-head-cell>Value / Provider</uui-table-head-cell>
-                ${when(this.azureWebAppAdvancedCopy, () => html`
+                ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn, () => html`
                   <uui-table-head-cell style="width: 100px; text-align: center;">Azure</uui-table-head-cell>
                 `)}
               </uui-table-head>
@@ -275,7 +346,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                           </uui-button>
                         </div>
                       </uui-table-cell>
-                      ${when(this.azureWebAppAdvancedCopy, () => html`
+                      ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn, () => html`
                         <uui-table-cell class="azure-cell">
                           <uui-button 
                             compact
@@ -350,9 +421,12 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         // Load UI settings
         if (prefsData.data.uiSettings) {
           this.excludeEmptyValues = prefsData.data.uiSettings.excludeEmptyValues ?? true;
-          this.onlyRedacted = prefsData.data.uiSettings.onlyRedacted ?? false;
-          this.onlyStarred = prefsData.data.uiSettings.onlyStarred ?? false;
+          // Only enable onlyRedacted if there are actually redacted items
+          this.onlyRedacted = (prefsData.data.uiSettings.onlyRedacted ?? false) && this.hasAnyRedactions;
+          // Only enable onlyStarred if there are actually starred items
+          this.onlyStarred = (prefsData.data.uiSettings.onlyStarred ?? false) && this.starredSettings.size > 0;
           this.replaceColonWithUnderscore = prefsData.data.uiSettings.replaceColonWithUnderscore ?? false;
+          this.showAzureColumn = prefsData.data.uiSettings.showAzureColumn ?? false;
         }
       }
     } catch (e) {
@@ -383,7 +457,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           excludeEmptyValues: this.excludeEmptyValues,
           onlyRedacted: this.onlyRedacted,
           onlyStarred: this.onlyStarred,
-          replaceColonWithUnderscore: this.replaceColonWithUnderscore
+          replaceColonWithUnderscore: this.replaceColonWithUnderscore,
+          showAzureColumn: this.showAzureColumn
         }
       });
     } catch (e) {
@@ -406,22 +481,101 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
       .filter-container {
         display: flex;
-        gap: 1.5rem;
+        align-items: center;
         padding: 1rem;
         background-color: var(--uui-color-surface);
         border-bottom: 1px solid var(--uui-color-border);
+        gap: 1rem;
         flex-wrap: wrap;
+      }
+
+      .filters-section {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .filters-section .toggle-item {
+        margin-bottom: 0;
+      }
+
+      .settings-section {
+        display: flex;
+        align-items: center;
+      }
+
+      .search-section {
+        min-width: 250px;
+        flex: 1;
+        max-width: 500px;
+      }
+
+      .search-section uui-input {
+        width: 100%;
+      }
+
+      .search-section uui-icon {
+        margin-left: 0.25rem;
+      }
+
+      @media (max-width: 1200px) {
+        .search-section {
+          flex-basis: 100%;
+          max-width: 100%;
+        }
+      }
+
+      .settings-popover-content {
+        padding: 1rem;
+        min-width: 320px;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        background-color: var(--uui-color-surface);
+        border: 1px solid var(--uui-color-border);
+        border-radius: var(--uui-border-radius);
+        box-shadow: var(--uui-shadow-depth-3);
+      }
+
+      .settings-header {
+        font-weight: bold;
+        font-size: 1.1em;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--uui-color-border);
+        color: var(--uui-color-text);
       }
 
       .toggle-item {
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        margin-bottom: 0.5rem;
       }
 
       .toggle-item label {
         cursor: pointer;
         user-select: none;
+        flex: 1;
+        line-height: 1.5;
+      }
+
+      .toggle-item label:hover {
+        opacity: 0.8;
+      }
+
+      .settings-popover-content .toggle-item {
+        padding: 0.25rem 0;
+      }
+
+      .settings-popover-content code {
+        background-color: var(--uui-color-surface-alt);
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 0.9em;
       }
 
       .content-container {
