@@ -298,6 +298,8 @@ jobs:
       MYGET_API_KEY: ${{ secrets.MYGET_API_KEY }}
     steps:
     - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
     
     - uses: actions/setup-dotnet@v5
       with:
