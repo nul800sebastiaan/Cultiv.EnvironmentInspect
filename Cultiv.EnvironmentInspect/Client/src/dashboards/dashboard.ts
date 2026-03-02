@@ -1,8 +1,13 @@
 import { LitElement, css, html, customElement, property, repeat, when, state } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_NOTIFICATION_CONTEXT } from '@umbraco-cms/backoffice/notification';
-import { EnvironmentVariable } from "../api/types.gen";
+import { EnvironmentVariable, EnvironmentInspectResponse, UserPreferencesDto } from "../api/types.gen";
 import { CultivEnvironmentInspectService } from "../api/sdk.gen";
+
+// Type for elements with checked property (like uui-toggle)
+interface CheckableElement extends HTMLElement {
+  checked: boolean;
+}
 
 @customElement('environmentinspect-dashboard')
 export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitElement) {
@@ -204,7 +209,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                     <uui-toggle
                       ?checked=${this.replaceColonWithUnderscore}
                       @change=${(e: CustomEvent) => {
-                        this.replaceColonWithUnderscore = (e.target as any).checked;
+                        this.replaceColonWithUnderscore = (e.target as CheckableElement).checked;
                         this.saveUISettings();
                       }}>
                     </uui-toggle>
@@ -217,7 +222,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                       <uui-toggle
                         ?checked=${this.showAzureColumn}
                         @change=${(e: CustomEvent) => {
-                          this.showAzureColumn = (e.target as any).checked;
+                          this.showAzureColumn = (e.target as CheckableElement).checked;
                           this.saveUISettings();
                         }}>
                       </uui-toggle>
@@ -234,7 +239,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                 <uui-toggle
                   ?checked=${this.excludeEmptyValues}
                   @change=${(e: CustomEvent) => {
-                    this.excludeEmptyValues = (e.target as any).checked;
+                    this.excludeEmptyValues = (e.target as CheckableElement).checked;
                     this.saveUISettings();
                   }}>
                 </uui-toggle>
@@ -248,7 +253,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   ?disabled=${!this.hasAnyRedactions}
                   title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
                   @change=${(e: CustomEvent) => {
-                    this.onlyRedacted = (e.target as any).checked;
+                    this.onlyRedacted = (e.target as CheckableElement).checked;
                     this.saveUISettings();
                   }}>
                 </uui-toggle>
@@ -262,7 +267,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   ?disabled=${!this.hasAnyStarred}
                   title=${this.hasAnyStarred ? '' : 'No starred settings available'}
                   @change=${(e: CustomEvent) => {
-                    this.onlyStarred = (e.target as any).checked;
+                    this.onlyStarred = (e.target as CheckableElement).checked;
                     this.saveUISettings();
                   }}>
                 </uui-toggle>
@@ -437,16 +442,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
   }
 
-  async getData(): Promise<any> { // or a more specific type if available
+  async getData(): Promise<{ data?: EnvironmentInspectResponse }> {
     return CultivEnvironmentInspectService.getEnvironment();
   }
   
-  async getUserPreferences(): Promise<any> {
+  async getUserPreferences(): Promise<{ data?: UserPreferencesDto }> {
     try {
       return await CultivEnvironmentInspectService.getUserPreferences();
     } catch (e) {
       console.error("Failed to load user preferences", e);
-      return { data: { starredSettings: [] } };
+      return { data: { starredSettings: [], uiSettings: { excludeEmptyValues: true, onlyRedacted: false, onlyStarred: false, replaceColonWithUnderscore: false, showAzureColumn: false } } };
     }
   }
   

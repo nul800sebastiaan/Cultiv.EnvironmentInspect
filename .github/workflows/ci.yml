@@ -108,6 +108,13 @@ jobs:
       working-directory: ./${{env.PATH_TO_EXTENSION}}/Client
       run: npm ci
 
+    - name: Lint Client code
+      working-directory: ./${{env.PATH_TO_EXTENSION}}/Client
+      run: npm run lint
+
+    - name: Dotnet Format check
+      run: dotnet format --verify-no-changes --verbosity diagnostic
+
     - name: Cache NuGet
       id: nuget-packages
       uses: actions/cache@v4

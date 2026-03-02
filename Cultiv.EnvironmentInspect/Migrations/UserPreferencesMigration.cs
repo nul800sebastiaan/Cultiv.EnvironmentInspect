@@ -22,9 +22,9 @@ internal class RunUserPreferencesMigration : INotificationAsyncHandler<UmbracoAp
     public async Task HandleAsync(UmbracoApplicationStartedNotification notification, CancellationToken cancellationToken)
     {
         _logger.LogInformation("RunUserPreferencesMigration.HandleAsync() called");
-        
+
         var pendingMigrations = await _dbContext.Database.GetPendingMigrationsAsync(cancellationToken);
-        
+
         if (pendingMigrations.Any())
         {
             _logger.LogInformation("Running {Count} pending migrations", pendingMigrations.Count());

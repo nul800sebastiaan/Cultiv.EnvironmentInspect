@@ -51,10 +51,10 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
 
             // Create an Umbraco core scope for proper database transaction handling
             using ICoreScope scope = _scopeProvider.CreateCoreScope();
-            
+
             // Create a service scope to resolve scoped services
             using var serviceScope = _serviceProvider.CreateScope();
-            
+
             // Resolve scoped services within the scope
             var dbContext = serviceScope.ServiceProvider.GetRequiredService<EnvironmentInspectDbContext>();
             var environmentService = serviceScope.ServiceProvider.GetRequiredService<IEnvironmentInspectService>();
@@ -64,7 +64,7 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
             // Get all valid configuration keys
             var environmentData = await environmentService.GetEnvironmentDataAsync();
             var validKeys = environmentData.Variables.Select(v => v.Key).ToHashSet();
-            
+
             _logger.LogDebug("Found {Count} valid configuration keys", validKeys.Count);
 
             // Get all user preferences
@@ -98,7 +98,7 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
             foreach (var userKey in userKeys)
             {
                 var user = await userManager.FindByIdAsync(userKey);
-                
+
                 // Remove preferences if:
                 // - User no longer exists
                 // - User is disabled (not approved) and their last login was more than 3 months ago
@@ -131,9 +131,9 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
                     .Where(p => inactiveUserKeys.Contains(p.UserKey))
                     .ToList();
 
-                _logger.LogInformation("Found {Count} preferences for {UserCount} inactive users", 
+                _logger.LogInformation("Found {Count} preferences for {UserCount} inactive users",
                     inactiveUserPreferences.Count, inactiveUserKeys.Count);
-                
+
                 dbContext.UserPreferences.RemoveRange(inactiveUserPreferences);
                 deletedCount += inactiveUserPreferences.Count;
             }
@@ -147,7 +147,7 @@ internal class UserPreferencesCleanupJob : IDistributedBackgroundJob
             {
                 _logger.LogInformation("User preferences cleanup completed: no orphaned preferences found");
             }
-            
+
             // Complete the scope to commit the transaction
             scope.Complete();
         }

@@ -4,7 +4,7 @@ namespace Cultiv.EnvironmentInspect.Data;
 
 internal class EnvironmentInspectDbContext : DbContext
 {
-    public EnvironmentInspectDbContext(DbContextOptions<EnvironmentInspectDbContext> options) 
+    public EnvironmentInspectDbContext(DbContextOptions<EnvironmentInspectDbContext> options)
         : base(options)
     {
     }
@@ -14,7 +14,7 @@ internal class EnvironmentInspectDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        
+
         // Configure the UserPreference entity
         modelBuilder.Entity<UserPreference>(entity =>
         {

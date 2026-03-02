@@ -26,7 +26,7 @@ internal class UserPreferencesService : IUserPreferencesService
             .ToList();
 
         var uiSettings = new UISettingsDto();
-        
+
         // Load UI settings from preferences
         var uiPrefs = allPreferences.Where(p => p.SettingKey.StartsWith(UI_SETTING_PREFIX)).ToList();
         foreach (var pref in uiPrefs)
@@ -104,7 +104,7 @@ internal class UserPreferencesService : IUserPreferencesService
         // Use a transaction to prevent race conditions from concurrent toggle requests
         using var transaction = await _dbContext.Database.BeginTransactionAsync(
             System.Data.IsolationLevel.Serializable);
-        
+
         try
         {
             var existing = await _dbContext.UserPreferences
@@ -142,7 +142,7 @@ internal class UserPreferencesService : IUserPreferencesService
     public async Task SaveUISettingsAsync(string userKey, UISettingsDto uiSettings)
     {
         var now = DateTime.UtcNow;
-        
+
         var settingsMap = new Dictionary<string, bool>
         {
             { "_ui_excludeEmptyValues", uiSettings.ExcludeEmptyValues },
