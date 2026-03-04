@@ -15,11 +15,13 @@ on:
       - "develop/v2"
       - "release/v2"
       - "feature/v2/**"
+      - "hotfix/v2/**"
   pull_request:
     branches:
       - develop/v2
       - release/v2
       - feature/v2/**
+      - hotfix/v2/**
   workflow_dispatch:
 
 jobs:
@@ -125,6 +127,13 @@ jobs:
       working-directory: ./${{env.PATH_TO_EXTENSION}}/Client
       run: npm ci
 
+    - name: Update Version Files
+      id: update-version
+      uses: CrumpledDog/Crumpled.Umbraco.Package.Actions/update-version-files@main
+      with:
+        semver: ${{ needs.setup.outputs.semver }}
+        path-to-extension: ${{ env.PATH_TO_EXTENSION }}
+
     - name: Lint Client code
       working-directory: ./${{env.PATH_TO_EXTENSION}}/Client
       run: npm run lint
@@ -141,13 +150,6 @@ jobs:
         restore-keys: |
           nuget-cache-${{ runner.os }}-${{ github.ref_name }}-
           nuget-cache-${{ runner.os }}-nuget-
-
-    - name: Update Version Files
-      id: update-version
-      uses: CrumpledDog/Crumpled.Umbraco.Package.Actions/update-version-files@main
-      with:
-        semver: ${{ needs.setup.outputs.semver }}
-        path-to-extension: ${{ env.PATH_TO_EXTENSION }}
 
     - name: Build Project
       working-directory: ${{ env.PATH_TO_TESTSITE }}
@@ -185,10 +187,20 @@ jobs:
         npm run generate-client
 
     - name: Stop Project
-      working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
+      if: always()
+      shell: bash
       run: |
-         kill $DOTNET_PID 2>/dev/null || true
-         echo "Stopped dotnet process (PID: $DOTNET_PID)"
+        if [ -n "$DOTNET_PID" ]; then
+          if ps -p $DOTNET_PID > /dev/null 2>&1; then
+            echo "Umbraco process $DOTNET_PID is still running, stopping it..."
+            kill $DOTNET_PID 2>/dev/null || true
+            sleep 2
+          else
+            echo "Umbraco process $DOTNET_PID had already stopped"
+          fi
+        else
+          echo "No DOTNET_PID set"
+        fi
          
     - name: Check for Migration Errors
       shell: pwsh
@@ -322,38 +334,39 @@ jobs:
         Write-Host "Started Umbraco with PID: $($MyProcess.Id)"
         Write-Host "Waiting 10 seconds for initial startup..."
         Start-Sleep -Seconds 10
-    
-    - name: Health Check
-      shell: pwsh
-      run: |
+        
         Write-Host "Checking if Umbraco is responding..."
         for ($i = 1; $i -le 30; $i++) {
           try {
             $response = Invoke-WebRequest -Uri "https://localhost:44310" -SkipCertificateCheck -UseBasicParsing -TimeoutSec 2
             if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 302) {
               Write-Host "Umbraco is responding!"
-              exit 0
+              break
             }
           } catch {
-            Write-Host "Attempt $i: Not ready yet, waiting 2 seconds..."
+            Write-Host "Attempt ${i}: Not ready yet, waiting 2 seconds..."
             Start-Sleep -Seconds 2
           }
         }
-        Write-Host "Umbraco failed to respond after 30 attempts"
-        exit 1
+        
+        # Final check
+        try {
+          $response = Invoke-WebRequest -Uri "https://localhost:44310" -SkipCertificateCheck -UseBasicParsing -TimeoutSec 2
+          if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 302) {
+            Write-Host "✓ Umbraco is responding successfully!"
+          } else {
+            Write-Host "ERROR: Umbraco failed to respond after 30 attempts"
+            exit 1
+          }
+        } catch {
+          Write-Host "ERROR: Umbraco failed to respond after 30 attempts"
+          exit 1
+        }
     
     - name: Check for Migration Errors
       shell: pwsh
       run: |
         pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
-    
-    - name: Stop Application
-      if: always()
-      shell: pwsh
-      run: |
-        if ($env:DOTNET_PID) {
-          Stop-Process -Id $env:DOTNET_PID -Force -ErrorAction SilentlyContinue
-        }
     
     - name: Upload Logs on Failure
       if: failure()
