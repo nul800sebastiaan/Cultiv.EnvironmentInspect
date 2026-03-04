@@ -133,24 +133,44 @@ jobs:
 
     - name: Start Project
       working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
-      shell: pwsh
+      shell: bash
       run: |
-        $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build --no-restore -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
-        echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
-        Start-Sleep -Seconds 10
+        nohup dotnet run --no-build --no-restore -c Release > ../app.log 2> ../app-errors.log &
+        echo "DOTNET_PID=$!" >> $GITHUB_ENV
+        echo "Started Umbraco with PID: $!"
+        echo "Waiting 5 seconds for initial startup..."
+        sleep 5
+    
+    - name: Health Check
+      shell: bash
+      run: |
+        echo "Checking if Umbraco is responding..."
+        for i in {1..30}; do
+          if curl -k -s -o /dev/null -w "%{http_code}" https://localhost:44310 | grep -q "200\|302"; then
+            echo "Umbraco is responding!"
+            exit 0
+          fi
+          echo "Attempt $i: Not ready yet, waiting 2 seconds..."
+          sleep 2
+        done
+        echo "Umbraco failed to respond after 30 attempts"
+        exit 1
 
     - name: CodeGen
       working-directory: ${{ env.PATH_TO_EXTENSION }}
       run: |
         cd Client
-        sleep 10s
         npm run generate-client
 
     - name: Stop Project
-      working-directory: ${{ github.workspace }}/${{ env.PATH_TO_TESTSITE }}
-      shell: pwsh
+      if: always()
+      shell: bash
       run: |
-         Stop-Process -Id $env:DOTNET_PID
+        if [ -n "$DOTNET_PID" ]; then
+          echo "Stopping Umbraco process $DOTNET_PID"
+          kill $DOTNET_PID 2>/dev/null || true
+          sleep 2
+        fi
          
     - name: Check for Migration Errors
       shell: pwsh
@@ -193,6 +213,7 @@ jobs:
   test-sqlserver:
     name: Test with SQL Server LocalDB
     runs-on: windows-latest
+    if: ${{ github.actor != 'nektos/act' }}
     needs: [setup, build]
     timeout-minutes: 10
     steps:
@@ -270,7 +291,28 @@ jobs:
       run: |
         $MyProcess = Start-Process -FilePath 'dotnet' -WorkingDirectory . -ArgumentList 'run --no-build -c Release' -PassThru -RedirectStandardOutput "../app.log" -RedirectStandardError "../app-errors.log"
         echo "DOTNET_PID=$($MyProcess.Id)" >> $env:GITHUB_ENV
-        Start-Sleep -Seconds 60
+        Write-Host "Started Umbraco with PID: $($MyProcess.Id)"
+        Write-Host "Waiting 10 seconds for initial startup..."
+        Start-Sleep -Seconds 10
+    
+    - name: Health Check
+      shell: pwsh
+      run: |
+        Write-Host "Checking if Umbraco is responding..."
+        for ($i = 1; $i -le 30; $i++) {
+          try {
+            $response = Invoke-WebRequest -Uri "https://localhost:44310" -SkipCertificateCheck -UseBasicParsing -TimeoutSec 2
+            if ($response.StatusCode -eq 200 -or $response.StatusCode -eq 302) {
+              Write-Host "Umbraco is responding!"
+              exit 0
+            }
+          } catch {
+            Write-Host "Attempt $i: Not ready yet, waiting 2 seconds..."
+            Start-Sleep -Seconds 2
+          }
+        }
+        Write-Host "Umbraco failed to respond after 30 attempts"
+        exit 1
     
     - name: Check for Migration Errors
       shell: pwsh
@@ -282,6 +324,7 @@ jobs:
       shell: pwsh
       run: |
         if ($env:DOTNET_PID) {
+          Write-Host "Stopping Umbraco process $env:DOTNET_PID"
           Stop-Process -Id $env:DOTNET_PID -Force -ErrorAction SilentlyContinue
         }
     
@@ -320,11 +363,15 @@ jobs:
     
     - name: Install Package Validation Tool
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet tool install -g dotnet-validate --prerelease
+      run: |
+        dotnet tool install -g dotnet-validate --prerelease
+        echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
     
     - name: Validate NuGet Package
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet validate package local nuget-packages/Cultiv.EnvironmentInspect.*.nupkg
+      run: |
+        export PATH="$HOME/.dotnet/tools:$PATH"
+        dotnet validate package local nuget-packages/Cultiv.EnvironmentInspect.*.nupkg
     
     - name: Create GitHub Release
       if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
@@ -367,6 +414,7 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    if: ${{ github.actor != 'nektos/act' }}
     permissions:
       contents: read
       security-events: write
