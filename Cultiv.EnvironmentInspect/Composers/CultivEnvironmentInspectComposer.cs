@@ -33,13 +33,13 @@ namespace Cultiv.EnvironmentInspect.Composers
             // Register configuration options with post-configuration to handle hybrid Exclude array
             builder.Services.Configure<EnvironmentInspectOptions>(
                 builder.Config.GetSection("EnvironmentInspect"));
-            
+
             // Post-configure to manually bind the Exclude array
             builder.Services.PostConfigure<EnvironmentInspectOptions>(options =>
             {
                 var config = builder.Config;
                 var excludeSection = config.GetSection("EnvironmentInspect:Exclude");
-                
+
                 if (excludeSection.Exists())
                 {
                     options.Exclude.Clear();
@@ -64,18 +64,18 @@ namespace Cultiv.EnvironmentInspect.Composers
 
             // Register the environment inspect service
             builder.Services.AddSingleton<IEnvironmentInspectService, EnvironmentInspectService>();
-            
+
             // Register user preferences service
             builder.Services.AddScoped<IUserPreferencesService, UserPreferencesService>();
-            
+
             // Register EF Core DbContext with Umbraco's database connection
             builder.Services.AddDbContext<EnvironmentInspectDbContext>((serviceProvider, options) =>
             {
                 var connectionStrings = serviceProvider.GetRequiredService<IOptionsMonitor<ConnectionStrings>>().CurrentValue;
-                
+
                 var connectionString = connectionStrings.ConnectionString!;
                 var providerName = connectionStrings.ProviderName;
-                
+
                 // Resolve |DataDirectory| placeholder for SQLite
                 if (connectionString.Contains("|DataDirectory|", StringComparison.OrdinalIgnoreCase))
                 {
@@ -83,7 +83,7 @@ namespace Cultiv.EnvironmentInspect.Composers
                     var dataDirectory = Path.Combine(hostEnvironment.ContentRootPath, "umbraco", "Data");
                     connectionString = connectionString.Replace("|DataDirectory|", dataDirectory, StringComparison.OrdinalIgnoreCase);
                 }
-                
+
                 if (string.IsNullOrWhiteSpace(providerName) || providerName.Contains("SQLite", StringComparison.OrdinalIgnoreCase))
                 {
                     options.UseSqlite(connectionString);
@@ -92,23 +92,23 @@ namespace Cultiv.EnvironmentInspect.Composers
                 {
                     options.UseSqlServer(connectionString);
                 }
-                
+
                 // Suppress pending model changes warning - necessary for cross-database compatibility
                 // The migration uses SQL Server types (nvarchar, datetime2) which work on both providers
                 // but SQLite sees them as mismatches since it expects TEXT/INTEGER types
                 options.ConfigureWarnings(warnings =>
                     warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
-            
+
             // Register operation ID handler for Swagger
             builder.Services.AddSingleton<IOperationIdHandler, CustomOperationHandler>();
 
             // Pre-warm the cache on application startup
             builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, CachePrewarmHandler>();
-            
+
             // Run database migrations on application startup
             builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, RunUserPreferencesMigration>();
-            
+
             // Register weekly cleanup job for orphaned user preferences (distributed - runs on one server only)
             builder.Services.AddSingleton<IDistributedBackgroundJob, UserPreferencesCleanupJob>();
 
@@ -141,7 +141,7 @@ namespace Cultiv.EnvironmentInspect.Composers
             });
         }
 
-         public class CultivEnvironmentInspectOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
+        public class CultivEnvironmentInspectOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
         {
             protected override string ApiName => Constants.ApiName;
         }

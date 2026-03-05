@@ -22,8 +22,8 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
     private readonly object _configChangeLock = new object();
 
     public EnvironmentInspectService(
-        IConfiguration configuration, 
-        AppCaches appCaches, 
+        IConfiguration configuration,
+        AppCaches appCaches,
         ILogger<EnvironmentInspectService> logger,
         IOptionsMonitor<EnvironmentInspectOptions> options)
     {
@@ -46,10 +46,10 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                 }
                 _lastConfigChange = now;
             }
-            
+
             _logger.LogInformation("EnvironmentInspect options changed, clearing cache");
             _runtimeCache.Clear(CacheKey);
-            
+
             // Re-warm the cache in the background
             _ = Task.Run(async () =>
             {
@@ -93,7 +93,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         _logger.LogDebug("Current exclusion rules count: {Count}", options.Exclude.Count);
         foreach (var rule in options.Exclude)
         {
-            _logger.LogDebug("Exclusion rule - Key: {Key}, Provider: {Provider}, ProviderType: {ProviderType}, ProviderSource: {ProviderSource}", 
+            _logger.LogDebug("Exclusion rule - Key: {Key}, Provider: {Provider}, ProviderType: {ProviderType}, ProviderSource: {ProviderSource}",
                 rule.Key, rule.Provider, rule.ProviderType, rule.ProviderSource);
         }
 
@@ -182,7 +182,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
     }
 
     private List<EnvironmentVariable> ApplyExclusions(
-        List<EnvironmentVariable> variables, 
+        List<EnvironmentVariable> variables,
         EnvironmentInspectOptions options)
     {
         var excluded = new List<string>();
@@ -278,13 +278,13 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
             return true;
         }).ToList();
-        
+
         _logger.LogDebug("Applied exclusions: {ExcludedCount} variables excluded out of {TotalCount}", excluded.Count, variables.Count);
         return result;
     }
 
     private List<EnvironmentVariable> ApplyRedactions(
-        List<EnvironmentVariable> variables, 
+        List<EnvironmentVariable> variables,
         EnvironmentInspectOptions options)
     {
         foreach (var variable in variables)
@@ -378,7 +378,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
             {
                 var originalValue = variable.Value;
                 var redactedValue = ApplyRedactionMode(originalValue, rule, options);
-                
+
                 // Only mark as redacted if the value actually changed
                 if (redactedValue != originalValue)
                 {
@@ -476,7 +476,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                     result = Regex.Replace(
                         result,
                         pattern,
-                        match => 
+                        match =>
                         {
                             var keyPart = match.Groups[1].Value;
                             var valuePart = match.Groups[2].Value;
@@ -499,7 +499,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
     private string RedactNestedValue(string value, RedactionRule rule, EnvironmentInspectOptions options)
     {
         var redactionOptions = rule.RedactionOptions;
-        
+
         // If KeepFirst/KeepLast are specified, use partial redaction
         if (redactionOptions?.KeepFirst.HasValue == true || redactionOptions?.KeepLast.HasValue == true)
         {
