@@ -258,7 +258,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   }}>
                 </uui-toggle>
                 <label @click=${() => { if (this.hasAnyRedactions) { this.onlyRedacted = !this.onlyRedacted; this.saveUISettings(); } }}>
-                  Only redacted
+                  🔒 Redacted
                 </label>
               </div>
               <div class="toggle-item">
@@ -272,7 +272,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   }}>
                 </uui-toggle>
                 <label @click=${() => { if (this.hasAnyStarred) { this.onlyStarred = !this.onlyStarred; this.saveUISettings(); } }}>
-                  ⭐ Only starred
+                  ⭐ Starred
                 </label>
               </div>
             </div>
