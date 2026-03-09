@@ -68,7 +68,7 @@ internal class RunUserPreferencesMigration : INotificationAsyncHandler<UmbracoAp
             foreach (var migrationId in pendingMigrations)
             {
                 var isSqlite = _dbContext.Database.ProviderName?.Contains("Sqlite", StringComparison.OrdinalIgnoreCase) ?? false;
-                
+
                 var sql = isSqlite
                     ? $"INSERT OR IGNORE INTO __EFMigrationsHistory (MigrationId, ProductVersion) VALUES ('{migrationId}', '10.0.0')"
                     : $"IF NOT EXISTS (SELECT 1 FROM __EFMigrationsHistory WHERE MigrationId = '{migrationId}') " +
