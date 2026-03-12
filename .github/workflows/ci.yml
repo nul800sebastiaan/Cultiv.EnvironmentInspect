@@ -8,6 +8,7 @@ env:
   PATH_TO_EXTENSION: "Cultiv.EnvironmentInspect"
   PATH_TO_TESTSITE: "Cultiv.EnvironmentInspect.DemoSite"
   DOTNET_VERSION: '10'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
@@ -117,7 +118,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Setup Node.js environment
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v5
       with:
         node-version: 'lts/*'
         cache: 'npm'
@@ -143,7 +144,7 @@ jobs:
 
     - name: Cache NuGet
       id: nuget-packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.nuget/packages
         key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
@@ -221,7 +222,7 @@ jobs:
       run: dotnet pack --configuration Release /p:PackageVersion=${{ needs.setup.outputs.semver }} /p:FileVersion=${{ steps.update-version.outputs.file-version }}
     
     - name: Upload NuGet Package for Testing
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: nuget-package
         path: |
@@ -241,7 +242,7 @@ jobs:
     
     - name: Upload Logs on Failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: sqlite-logs
         path: |
@@ -264,7 +265,7 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
     - name: Cache NuGet
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.nuget/packages
         key: nuget-cache-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('**/*.csproj*') }}
@@ -273,7 +274,7 @@ jobs:
           nuget-cache-${{ runner.os }}-nuget-
     
     - name: Download NuGet Package
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v5
       with:
         name: nuget-package
         path: ./nuget-packages
@@ -370,7 +371,7 @@ jobs:
     
     - name: Upload Logs on Failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: sqlserver-logs
         path: |
