@@ -284,6 +284,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   this.filterText = (e.target as HTMLInputElement).value;
                 }}>
                 <uui-icon name="search" slot="prepend"></uui-icon>
+                ${when(this.filterText, () => html`
+                  <uui-button 
+                    slot="append"
+                    compact
+                    look="secondary"
+                    label="Clear filter"
+                    @click=${() => this.filterText = ''}>
+                    <uui-icon name="wrong"></uui-icon>
+                  </uui-button>
+                `)}
               </uui-input>
             </div>
           </div>
