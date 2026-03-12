@@ -258,7 +258,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   }}>
                 </uui-toggle>
                 <label @click=${() => { if (this.hasAnyRedactions) { this.onlyRedacted = !this.onlyRedacted; this.saveUISettings(); } }}>
-                  Only redacted
+                  🔒 Redacted
                 </label>
               </div>
               <div class="toggle-item">
@@ -272,7 +272,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   }}>
                 </uui-toggle>
                 <label @click=${() => { if (this.hasAnyStarred) { this.onlyStarred = !this.onlyStarred; this.saveUISettings(); } }}>
-                  ⭐ Only starred
+                  ⭐ Starred
                 </label>
               </div>
             </div>
@@ -284,6 +284,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   this.filterText = (e.target as HTMLInputElement).value;
                 }}>
                 <uui-icon name="search" slot="prepend"></uui-icon>
+                ${when(this.filterText, () => html`
+                  <uui-button 
+                    slot="append"
+                    compact
+                    look="secondary"
+                    label="Clear filter"
+                    @click=${() => this.filterText = ''}>
+                    <uui-icon name="wrong"></uui-icon>
+                  </uui-button>
+                `)}
               </uui-input>
             </div>
           </div>
