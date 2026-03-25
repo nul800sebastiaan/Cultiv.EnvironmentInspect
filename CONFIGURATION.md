@@ -119,8 +119,25 @@ Result: `12••••90`
   }
 }
 ```
-Input: `Server=blaa.database.windows.net,1433;Database=22sa1bmi2ye;User ID=ypad0yvmodr@blaa;Password=7R9K8sS*@G2$JmpeQs($;Connection Timeout=120;`  
-Result: `Server=blaa.database.windows.net,1433;Database=22sa1bmi2ye;User ID=ypad0yvmodr@blaa;Password=7R••••($;Connection Timeout=120;`
+Input: `Server=example-server.database.windows.net,1433;Database=myDatabase;User ID=dbuser@example;Password=S3cr3tP@ssw0rd!XyZ;Connection Timeout=120;`  
+Result: `Server=example-server.database.windows.net,1433;Database=myDatabase;User ID=dbuser@example;Password=S3••••yZ;Connection Timeout=120;`
+
+*Option C: Extract and redact keys from JSON values*
+```json
+{
+  "Key": "^UMBRACO:CLOUD:EXTERNALLOGINPROVIDER:\\d+$",
+  "RedactionMode": "Advanced",
+  "RedactionOptions": {
+    "Keys": [ "ClientSecret" ],
+    "KeepFirst": 2,
+    "KeepLast": 2
+  }
+}
+```
+Input: `{"Id":"a1b2c3d4-5678-9abc-def0-123456789abc","Name":"Example SSO Provider","Alias":"example-sso",...,"Settings":{"ClientId":"abcd1234-5678-90ef-ghij-klmnopqrstuv","ClientSecret":"Abc123~DefGhiJklMnoPqrStUvWxYz0123456789","Authority":"https://login.example.com/..."}}`  
+Result: `{"Id":"a1b2c3d4-5678-9abc-def0-123456789abc","Name":"Example SSO Provider","Alias":"example-sso",...,"Settings":{"ClientId":"abcd1234-5678-90ef-ghij-klmnopqrstuv","ClientSecret":"Ab••••89","Authority":"https://login.example.com/..."}}`
+
+The Advanced mode with `Keys` automatically detects if the value is JSON and parses it to redact only the specified keys, leaving other properties visible. This works for both simple JSON objects and nested structures.
 
 #### Provider-Based Redaction
 

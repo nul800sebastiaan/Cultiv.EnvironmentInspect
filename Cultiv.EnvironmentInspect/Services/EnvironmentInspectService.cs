@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -456,9 +457,23 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
     private string RedactNestedKeys(string value, RedactionRule rule, EnvironmentInspectOptions options)
     {
+        var keysToRedact = rule.RedactionOptions?.Keys ?? new List<string>();
+
+        // Try to handle as JSON first
+        if (IsJson(value))
+        {
+            try
+            {
+                return RedactJsonKeys(value, keysToRedact, rule, options);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error parsing JSON for redaction, falling back to string patterns");
+            }
+        }
+
         // Handle common delimited formats (connection strings, key-value pairs)
         var result = value;
-        var keysToRedact = rule.RedactionOptions?.Keys ?? new List<string>();
 
         foreach (var key in keysToRedact)
         {
@@ -494,6 +509,90 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         }
 
         return result;
+    }
+
+    private bool IsJson(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+
+        value = value.Trim();
+        return (value.StartsWith("{") && value.EndsWith("}")) ||
+               (value.StartsWith("[") && value.EndsWith("]"));
+    }
+
+    private string RedactJsonKeys(string json, List<string> keysToRedact, RedactionRule rule, EnvironmentInspectOptions options)
+    {
+        using var document = JsonDocument.Parse(json);
+        var root = document.RootElement;
+
+        // Use a dictionary to build the redacted JSON
+        var redacted = RedactJsonElement(root, keysToRedact, rule, options);
+
+        // Serialize back to JSON string with the same formatting style (compact)
+        return JsonSerializer.Serialize(redacted, new JsonSerializerOptions
+        {
+            WriteIndented = false,
+            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        });
+    }
+
+    private object? RedactJsonElement(JsonElement element, List<string> keysToRedact, RedactionRule rule, EnvironmentInspectOptions options)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                var obj = new Dictionary<string, object?>();
+                foreach (var property in element.EnumerateObject())
+                {
+                    if (keysToRedact.Any(k => string.Equals(k, property.Name, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        // Redact this property value
+                        var originalValue = property.Value.ValueKind == JsonValueKind.String
+                            ? property.Value.GetString() ?? string.Empty
+                            : property.Value.GetRawText();
+                        obj[property.Name] = RedactNestedValue(originalValue, rule, options);
+                    }
+                    else
+                    {
+                        // Recursively process nested objects/arrays
+                        obj[property.Name] = RedactJsonElement(property.Value, keysToRedact, rule, options);
+                    }
+                }
+                return obj;
+
+            case JsonValueKind.Array:
+                var arr = new List<object?>();
+                foreach (var item in element.EnumerateArray())
+                {
+                    arr.Add(RedactJsonElement(item, keysToRedact, rule, options));
+                }
+                return arr;
+
+            case JsonValueKind.String:
+                return element.GetString();
+
+            case JsonValueKind.Number:
+                if (element.TryGetInt32(out var intValue))
+                    return intValue;
+                if (element.TryGetInt64(out var longValue))
+                    return longValue;
+                if (element.TryGetDouble(out var doubleValue))
+                    return doubleValue;
+                return element.GetRawText();
+
+            case JsonValueKind.True:
+                return true;
+
+            case JsonValueKind.False:
+                return false;
+
+            case JsonValueKind.Null:
+                return null;
+
+            default:
+                return element.GetRawText();
+        }
     }
 
     private string RedactNestedValue(string value, RedactionRule rule, EnvironmentInspectOptions options)
