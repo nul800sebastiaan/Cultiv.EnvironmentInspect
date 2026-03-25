@@ -379,20 +379,72 @@ jobs:
         export PATH="$HOME/.dotnet/tools:$PATH"
         dotnet validate package local nuget-packages/Cultiv.EnvironmentInspect.*.nupkg
     
+    - name: Generate Release Notes Body
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Check if publishing to nuget.org (for stable or beta releases)
+        if [[ "${{ github.event.inputs.publish_to_nuget }}" == "true" && ("${{ needs.setup.outputs.semver }}" != *"-"* || "${{ needs.setup.outputs.semver }}" == *"-beta."*) ]]; then
+          cat << 'EOF' > release_body.md
+        ## Installation
+        
+        ```bash
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }}
+        ```
+        EOF
+          
+          # Find the previous nuget.org release by looking for releases without "GitHub Packages" in body
+          echo "" >> release_body.md
+          echo "---" >> release_body.md
+          echo "" >> release_body.md
+          
+          # Get the last release that was published to nuget.org
+          LAST_NUGET_TAG=$(gh release list --limit 100 --json tagName,body --jq '.[] | select(.body | contains("## Installation") and (contains("```bash\ndotnet add package Cultiv.EnvironmentInspect --version") and (contains("GitHub Packages") | not))) | .tagName' | head -n1)
+          
+          if [[ -n "$LAST_NUGET_TAG" ]]; then
+            echo "## What's Changed (since $LAST_NUGET_TAG)" >> release_body.md
+            echo "" >> release_body.md
+            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" -F previous_tag_name="$LAST_NUGET_TAG" --jq .body >> release_body.md
+          else
+            echo "## What's Changed" >> release_body.md
+            echo "" >> release_body.md
+            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" --jq .body >> release_body.md
+          fi
+        else
+          # Not publishing to nuget.org - show alternative sources
+          echo "## Installation" > release_body.md
+          echo "" >> release_body.md
+          
+          if [[ -n "${{ env.MYGET_API_KEY }}" ]]; then
+            cat << 'EOF' >> release_body.md
+        ### From MyGet (pre-release)
+        
+        ```bash
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://www.myget.org/F/umbraco-packages/api/v3/index.json
+        ```
+        
+        EOF
+          fi
+          
+          cat << 'EOF' >> release_body.md
+        ### From GitHub Packages (pre-release)
+        
+        ```bash
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://nuget.pkg.github.com/nul800sebastiaan/index.json
+        ```
+        EOF
+        fi
+    
     - name: Create GitHub Release
       if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
         name: v${{ needs.setup.outputs.semver }}
-        generate_release_notes: true
+        generate_release_notes: ${{ github.event.inputs.publish_to_nuget != 'true' }}
         prerelease: ${{ contains(needs.setup.outputs.semver, '-') }}
-        body: |
-          ## Installation
-          
-          ```bash
-          ${{ contains(needs.setup.outputs.semver, '-') && format('dotnet add package Cultiv.EnvironmentInspect --version {0} --source https://nuget.pkg.github.com/nul800sebastiaan/index.json', needs.setup.outputs.semver) || format('dotnet add package Cultiv.EnvironmentInspect --version {0}', needs.setup.outputs.semver) }}
-          ```
+        body_path: release_body.md
     
     - name: Add GitHub Packages Source
       if: ${{ needs.setup.outputs.new_release_published == 'true' }}
@@ -409,12 +461,12 @@ jobs:
         dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
       
     - name: Push to Nuget.org
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && startsWith(github.ref, 'refs/heads/release/') && !contains(needs.setup.outputs.semver, '-') }}
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/')) && (!contains(needs.setup.outputs.semver, '-') || contains(needs.setup.outputs.semver, '-beta.')) }}
       run: |
         dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
     - name: Merge release branch to develop
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && startsWith(github.ref, 'refs/heads/release/') }}
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/')) }}
       run: .github/scripts/merge-to-develop.sh "${{ needs.setup.outputs.semver }}"
   
   security:
