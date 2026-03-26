@@ -14,12 +14,14 @@ on:
     branches: 
       - "develop/v2"
       - "release/v2"
+      - "beta/v2"
       - "feature/v2/**"
       - "hotfix/v2/**"
   pull_request:
     branches:
       - develop/v2
       - release/v2
+      - beta/v2
       - feature/v2/**
       - hotfix/v2/**
   workflow_dispatch:
