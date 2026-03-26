@@ -6,7 +6,7 @@ Cultiv Environment Inspector is an Umbraco CMS package (v17+) that provides a da
 
 **Key Technologies:**
 - **Backend**: ASP.NET Core (net10.0), Umbraco CMS v17+, EF Core
-- **Frontend**: TypeScript, Vue.js, Vite (in `/Client` folder)
+- **Frontend**: TypeScript, Lit (web components), Vite (in `/Client` folder)
 - **Database**: SQLite and SQL Server supported (migrations via EF Core)
 - **Build**: GitHub Actions CI/CD, NuGet package publishing
 
@@ -43,6 +43,8 @@ Cultiv.EnvironmentInspect.DemoSite/  # Test site for local development
 - Handle errors gracefully with try-catch and logging
 - Use nullable reference types (`#nullable enable`)
 - Use implicit usings (configured in project)
+- Use `IOptionsMonitor<T>` (not `IOptions<T>`) for reactive configuration that responds to hot reload
+- Gracefully degrade on validation errors (e.g., invalid regex patterns) - log warnings and continue execution
 
 **Example Service Pattern:**
 ```csharp
@@ -80,15 +82,25 @@ public class MyService : IMyService
 
 The frontend is in the `Client/` folder and uses:
 - TypeScript with strict mode
-- Vue.js for UI components
+- Lit for web components (Umbraco backoffice framework)
 - Vite for building
 - ESLint for linting
 
-Build the frontend with:
+**Development workflow:**
 ```bash
 cd Cultiv.EnvironmentInspect/Client
+
+# Generate TypeScript API client from OpenAPI (needs demo site running)
+npm run generate-client
+
+# Build for production
 npm run build
+
+# Watch mode for development (auto-rebuild on changes)
+npm run watch
 ```
+
+**Important**: If you modify backend API endpoints, regenerate the TypeScript client with `npm run generate-client` while the demo site is running.
 
 ## Configuration & Documentation
 
@@ -150,9 +162,26 @@ dotnet run
 
 ### Running Locally
 
-1. Start the demo site: `dotnet run` in `Cultiv.EnvironmentInspect.DemoSite/`
-2. Access Umbraco at `https://localhost:5001` (or configured port)
-3. Navigate to **Settings → Environment Inspector**
+1. Build solution: `dotnet build`
+2. Start the demo site: `dotnet run` in `Cultiv.EnvironmentInspect.DemoSite/`
+3. Generate TypeScript client (in new terminal): `cd Cultiv.EnvironmentInspect/Client && npm run generate-client`
+4. Build frontend: `npm run build` (or `npm run watch` for development)
+5. Access Umbraco at `https://localhost:44310` (or configured port in launchSettings.json)
+6. Navigate to **Settings → Environment Inspector**
+
+### Testing
+
+⚠️ **No automated testing framework is configured.** All features must be manually tested using the demo site.
+
+**Manual testing workflow:**
+1. Make your code changes
+2. Rebuild: `dotnet build`
+3. If you modified API endpoints, regenerate TypeScript client: `cd Cultiv.EnvironmentInspect/Client && npm run generate-client`
+4. Rebuild frontend if needed: `npm run build`
+5. Run demo site and test in browser: **Settings → Environment Inspector**
+6. Test with different configuration scenarios in `appsettings.json`
+7. Check browser console for errors
+8. Verify backend logs for warnings/errors
 
 ### Database Migrations
 
@@ -163,11 +192,32 @@ cd Cultiv.EnvironmentInspect
 dotnet ef migrations add MigrationName --startup-project ../Cultiv.EnvironmentInspect.DemoSite
 ```
 
+## Branching & Commits
+
+**Branch Strategy:**
+- `develop/v2` - Main development branch (default, protected)
+- `release/v2` - Stable release branch (protected)
+- `feature/v2/<name>` - Feature branches (branch from develop/v2)
+- `hotfix/v2/<name>` - Hotfix branches (branch from release/v2)
+
+**Commit Messages:**
+Use [Conventional Commits](https://www.conventionalcommits.org/) for automatic versioning:
+- `feat:` - New feature (minor version bump)
+- `fix:` - Bug fix (patch version bump)
+- `docs:` - Documentation only
+- `chore:` - Maintenance tasks
+- `feat!:` or `BREAKING CHANGE:` - Breaking change (major version bump)
+
+Example: `feat: add CSV export functionality`
+
 ## CI/CD
 
 The project uses GitHub Actions:
-- **`ci.yml`**: Builds, tests, formats check
+- **`ci.yml`**: Builds on Linux (SQLite), runs codegen, validates NuGet package, tests on Windows (SQL Server LocalDB)
 - **`release.yml`**: Creates GitHub releases and publishes to NuGet
+
+**Pre-releases**: Run release workflow from `develop/v2`  
+**Full releases**: Run release workflow from `release/v2`
 
 Code must pass `dotnet format --verify-no-changes` in CI.
 
@@ -197,6 +247,135 @@ Controllers are in `Controllers/` folder. Follow REST conventions:
 - Return appropriate status codes
 - Document with XML comments for Swagger
 - Handle errors and log them
+
+**API Organization Pattern:**
+- Base controller: `CultivEnvironmentInspectApiControllerBase` defines base routing and API grouping
+- Routing: `[BackOfficeRoute("cultivenvironmentinspect/api/v{version:apiVersion}")]`
+- API grouping: `[MapToApi(Constants.ApiName)]` groups endpoints in Swagger for codegen
+- Authorization: `[Authorize(Policy = AuthorizationPolicies.SectionAccessSettings)]` requires Settings section access
+- Versioning: `[ApiVersion("1.0")]` and `[MapToApiVersion("1.0")]` on each endpoint
+
+**After modifying API endpoints:**
+1. Ensure demo site is running
+2. Regenerate TypeScript client: `cd Cultiv.EnvironmentInspect/Client && npm run generate-client`
+3. Frontend will now have type-safe access to your new endpoint
+
+## Advanced Patterns
+
+### Reactive Configuration with IOptionsMonitor
+
+Services use `IOptionsMonitor<T>` instead of `IOptions<T>` to react to configuration changes in real-time:
+
+```csharp
+public class EnvironmentInspectService : IEnvironmentInspectService
+{
+    private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
+    
+    public EnvironmentInspectService(IOptionsMonitor<EnvironmentInspectOptions> options)
+    {
+        _options = options;
+        
+        // React to configuration changes
+        _options.OnChange((newOptions, name) => 
+        {
+            _cache.Clear();
+            Task.Run(async () => await PrewarmCacheAsync()); // Re-warm with new config
+        });
+    }
+    
+    public void ProcessData()
+    {
+        var currentOptions = _options.CurrentValue; // Always gets latest config
+    }
+}
+```
+
+### Hybrid Configuration Binding
+
+The `Exclude` and `Redact` arrays support both simple strings and complex objects. This is handled via **post-configuration**:
+
+```csharp
+// In Composer
+builder.Services.PostConfigure<EnvironmentInspectOptions>(options =>
+{
+    var excludeSection = config.GetSection("EnvironmentInspect:Exclude");
+    if (excludeSection.Exists())
+    {
+        options.Exclude.Clear();
+        foreach (var child in excludeSection.GetChildren())
+        {
+            if (!string.IsNullOrEmpty(child.Value) && !child.GetChildren().Any())
+            {
+                // Simple string: "^AZURE_.*"
+                options.Exclude.Add(new ExclusionRule { Key = child.Value });
+            }
+            else
+            {
+                // Complex object: { "ProviderType": "Azure", "RedactionMode": "Full" }
+                var rule = new ExclusionRule();
+                child.Bind(rule);
+                options.Exclude.Add(rule);
+            }
+        }
+    }
+});
+```
+
+This allows users to write:
+```json
+"Exclude": [
+  "^APPSETTING_",                                     // String
+  { "ProviderType": "AzureKeyVaultConfigurationProvider" }  // Object
+]
+```
+
+### DbContext Registration
+
+The `EnvironmentInspectDbContext` supports both SQLite and SQL Server with smart connection string resolution:
+
+```csharp
+builder.Services.AddDbContext<EnvironmentInspectDbContext>((serviceProvider, options) =>
+{
+    var connectionString = config.GetConnectionString("EnvironmentInspectDatabase") 
+                          ?? "Data Source=|DataDirectory|/EnvironmentInspect.db";
+    
+    // Replace |DataDirectory| token for SQLite
+    if (connectionString.Contains("|DataDirectory|"))
+    {
+        var umbracoDatabaseFactory = serviceProvider.GetRequiredService<IUmbracoDatabaseFactory>();
+        var dataDirectory = umbracoDatabaseFactory.SqlContext.SqlSyntax.GetDataDirectory();
+        connectionString = connectionString.Replace("|DataDirectory|", dataDirectory);
+        options.UseSqlite(connectionString);
+    }
+    else
+    {
+        options.UseSqlServer(connectionString);
+    }
+    
+    // Suppress pending model changes warning (cross-database compatibility)
+    options.ConfigureWarnings(warnings => 
+        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+});
+```
+
+### Graceful Error Handling
+
+When validating user input (e.g., regex patterns), log warnings instead of throwing exceptions:
+
+```csharp
+try
+{
+    var regex = new Regex(pattern);
+    // Use regex
+}
+catch (ArgumentException ex)
+{
+    _logger.LogWarning(ex, "Invalid regex pattern in configuration: {Pattern}. Skipping rule.", pattern);
+    // Continue execution - don't crash the application
+}
+```
+
+This ensures the dashboard remains usable even if users provide invalid configuration.
 
 ## Anti-Patterns to Avoid
 
