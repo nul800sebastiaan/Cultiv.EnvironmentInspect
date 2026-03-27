@@ -501,6 +501,15 @@ Recommended configuration for Umbraco Cloud environments that protects sensitive
         }
       },
       {
+        "Key": "^UMBRACO:CLOUD:EXTERNALLOGINPROVIDER:\\d+$",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "ClientSecret" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
         "Key": ".*Secret(?!.*HeaderName).*",
         "RedactionMode": "Partial"
       },
@@ -524,6 +533,7 @@ Recommended configuration for Umbraco Cloud environments that protects sensitive
 This configuration provides:
 - **Database security**: Redacts passwords in connection strings while showing server/database names
 - **Azure Blob Storage**: Only redacts the signature (`sig`) in SAS tokens, keeping other parameters visible
+- **External login providers**: Redacts ClientSecret in Umbraco Cloud external login provider JSON configurations while keeping provider details visible
 - **Shared secrets**: Protects any configuration key containing "Secret" (except header names like `SHAREDSECRET:HEADERNAME`)
 - **Website keys**: Fully hides Azure App Service authentication keys (`WEBSITE_AUTH_ENCRYPTION_KEY`, `WEBSITE_AUTH_SIGNING_KEY`)
 - **Umbraco Forms**: Protects reCAPTCHA private keys with partial visibility
