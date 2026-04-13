@@ -394,13 +394,20 @@ jobs:
         ```
         EOF
           
-          # Find the previous nuget.org release by looking for releases without "GitHub Packages" in body
+          # Find the previous nuget.org release tag using git tags directly
           echo "" >> release_body.md
           echo "---" >> release_body.md
           echo "" >> release_body.md
           
-          # Get the last release that was published to nuget.org
-          LAST_NUGET_TAG=$(gh release list --limit 100 --json tagName,body --jq '.[] | select(.body | contains("## Installation") and (contains("```bash\ndotnet add package Cultiv.EnvironmentInspect --version") and (contains("GitHub Packages") | not))) | .tagName' | head -n1)
+          # Get the previous stable or beta tag (these are the ones published to nuget.org)
+          CURRENT_TAG="v${{ needs.setup.outputs.semver }}"
+          if [[ "${{ needs.setup.outputs.semver }}" == *"-beta."* ]]; then
+            # Beta release: compare against previous stable or beta tag
+            LAST_NUGET_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$' | grep -v "^${CURRENT_TAG}$" | head -n1)
+          else
+            # Stable release: compare against previous stable tag
+            LAST_NUGET_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${CURRENT_TAG}$" | head -n1)
+          fi
           
           if [[ -n "$LAST_NUGET_TAG" ]]; then
             echo "## What's Changed (since $LAST_NUGET_TAG)" >> release_body.md
@@ -438,7 +445,7 @@ jobs:
     
     - name: Create GitHub Release
       if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
         name: v${{ needs.setup.outputs.semver }}
