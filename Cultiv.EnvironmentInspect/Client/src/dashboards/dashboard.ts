@@ -24,6 +24,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() settingsPopoverOpen: boolean = false;
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
+  @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
   private togglingStar: Set<string> = new Set(); // Track in-flight toggle requests
   private readonly incrementSize: number = 50;
 
@@ -159,6 +160,48 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       value: value,
       slotSetting: false
     }, null, 2);
+  }
+
+  generateBulkAzureWebAppSnippet(): string {
+    const selectedItems = this.filteredVariables.filter(v => this.selectedForAzure.has(v.key!));
+    const snippets = selectedItems.map(item => ({
+      name: this.formatKey(item.key!),
+      value: item.value || '',
+      slotSetting: false
+    }));
+    return JSON.stringify(snippets, null, 2);
+  }
+
+  toggleAzureSelection(key: string) {
+    if (this.selectedForAzure.has(key)) {
+      this.selectedForAzure.delete(key);
+    } else {
+      this.selectedForAzure.add(key);
+    }
+    this.requestUpdate();
+  }
+
+  toggleAllAzureSelection() {
+    const allSelected = this.filteredVariables.every(v => this.selectedForAzure.has(v.key!));
+    if (allSelected) {
+      // Deselect all filtered items
+      this.filteredVariables.forEach(v => this.selectedForAzure.delete(v.key!));
+    } else {
+      // Select all filtered items
+      this.filteredVariables.forEach(v => this.selectedForAzure.add(v.key!));
+    }
+    this.requestUpdate();
+  }
+
+  async copyBulkAzureSnippet() {
+    if (this.selectedForAzure.size === 0) return;
+    
+    const snippet = this.generateBulkAzureWebAppSnippet();
+    await this.copyToClipboard(snippet);
+    
+    // Clear selection after copy
+    this.selectedForAzure.clear();
+    this.requestUpdate();
   }
 
   getRedactionEmoji(redactedMode?: string | null): string {
@@ -297,17 +340,47 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
               </uui-input>
             </div>
           </div>
+          ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn && this.selectedForAzure.size > 0, () => html`
+            <div class="bulk-action-bar">
+              <span class="selection-count">${this.selectedForAzure.size} item${this.selectedForAzure.size === 1 ? '' : 's'} selected</span>
+              <uui-button
+                look="primary"
+                label="Copy selected as Azure JSON"
+                @click=${this.copyBulkAzureSnippet}>
+                ☁️ Copy ${this.selectedForAzure.size} item${this.selectedForAzure.size === 1 ? '' : 's'}
+              </uui-button>
+              <uui-button
+                look="secondary"
+                label="Clear selection"
+                @click=${() => { this.selectedForAzure.clear(); this.requestUpdate(); }}>
+                Clear
+              </uui-button>
+            </div>
+          `)}
           <div class="content-container" @scroll=${this.handleScroll}>          
             <uui-table>
               <uui-table-column style="width: 40px;"></uui-table-column>
               <uui-table-column style="width: 40%;"></uui-table-column>
               <uui-table-column style="width: 40%;"></uui-table-column>
+              ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn, () => html`
+                <uui-table-column style="width: 100px;"></uui-table-column>
+                <uui-table-column style="width: 40px;"></uui-table-column>
+              `)}
               <uui-table-head style="background-color: #1b264f; color: white">
                 <uui-table-head-cell style="width: 40px; text-align: center;">⭐</uui-table-head-cell>
                 <uui-table-head-cell>Environment value path</uui-table-head-cell>
                 <uui-table-head-cell>Value / Provider</uui-table-head-cell>
                 ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn, () => html`
                   <uui-table-head-cell style="width: 100px; text-align: center;">Azure</uui-table-head-cell>
+                  <uui-table-head-cell style="width: 40px; text-align: center;">
+                    <input 
+                      type="checkbox"
+                      class="select-all-checkbox"
+                      .checked=${this.filteredVariables.length > 0 && this.filteredVariables.every(v => this.selectedForAzure.has(v.key!))}
+                      @change=${() => this.toggleAllAzureSelection()}
+                      title="Select/deselect all items (${this.filteredVariables.length} total)"
+                    />
+                  </uui-table-head-cell>
                 `)}
               </uui-table-head>
               ${when(this.visibleVariables.length, () => html`
@@ -371,6 +444,15 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                             @click=${() => this.copyToClipboard(this.generateAzureWebAppSnippet(item.key!, item.value || ''))}>
                             ☁️
                           </uui-button>
+                        </uui-table-cell>
+                        <uui-table-cell class="checkbox-cell">
+                          <input 
+                            type="checkbox"
+                            class="azure-select-checkbox"
+                            .checked=${this.selectedForAzure.has(item.key!)}
+                            @change=${() => this.toggleAzureSelection(item.key!)}
+                            title="Select for bulk Azure copy"
+                          />
                         </uui-table-cell>
                       `)}
                     </uui-table-row>
@@ -594,8 +676,15 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       }
 
       .content-container {
-        max-height: calc(100vh - 260px);
+        flex: 1;
         overflow-y: auto;
+        min-height: 0;
+      }
+      
+      :host {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
       }
 
       uui-box {
@@ -665,6 +754,37 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       
       .star-button:hover {
         color: var(--uui-color-default);
+      }
+      
+      .checkbox-cell {
+        text-align: center;
+        vertical-align: middle !important;
+        width: 40px !important;
+        max-width: 40px !important;
+        padding: 0.25rem !important;
+      }
+      
+      .azure-select-checkbox,
+      .select-all-checkbox {
+        cursor: pointer;
+        width: 18px;
+        height: 18px;
+      }
+      
+      .bulk-action-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        background-color: var(--uui-color-selected);
+        border-bottom: 1px solid var(--uui-color-border);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      
+      .bulk-action-bar .selection-count {
+        font-weight: 500;
+        color: white;
+        margin-right: auto;
       }
 
       .load-more-container {
