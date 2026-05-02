@@ -44,6 +44,31 @@ jobs:
       
       - name: Fetch all tags
         run: git fetch --force --tags
+
+      - name: Update .releaserc for current branch
+        run: |
+          BRANCH_NAME="${{ github.ref_name }}"
+          echo "Current branch: $BRANCH_NAME"
+          
+          if [[ "$BRANCH_NAME" == hotfix/* ]] || [[ "$BRANCH_NAME" == feature/* ]]; then
+            # Convert branch name to valid semver prerelease identifier
+            # Prefix with "00-" to ensure these versions sort before alpha/beta/rc
+            # Truncate to max 15 chars total to keep NuGet paths short
+            # Replace feature->ft and hotfix->hf to save more space
+            BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/feature\//ft-/g; s/hotfix\//hf-/g; s/\//-/g' | cut -c 1-12)
+            PRERELEASE_ID="00-${BRANCH_SLUG}"
+            echo "Adding branch config: $BRANCH_NAME with prerelease: $PRERELEASE_ID"
+            
+            # Read current .releaserc, add the branch entry, and save
+            jq --arg name "$BRANCH_NAME" --arg prerelease "$PRERELEASE_ID" \
+              '.branches += [{"name": $name, "prerelease": $prerelease}]' \
+              .releaserc > .releaserc.tmp && mv .releaserc.tmp .releaserc
+            
+            echo "Updated .releaserc:"
+            cat .releaserc
+          else
+            echo "Branch does not match hotfix/* or feature/*, no update needed"
+          fi
         
       - name: Semantic Release (Dry Run)
         id: semantic
@@ -423,12 +448,52 @@ jobs:
     - name: Fetch all tags
       run: git fetch --force --tags
 
+    - name: Update .releaserc for current branch
+      run: |
+        BRANCH_NAME="${{ github.ref_name }}"
+        echo "Current branch: $BRANCH_NAME"
+        
+        if [[ "$BRANCH_NAME" == hotfix/* ]] || [[ "$BRANCH_NAME" == feature/* ]]; then
+          # Convert branch name to valid semver prerelease identifier
+          # Prefix with "00-" to ensure these versions sort before alpha/beta/rc
+          # Truncate to max 15 chars total to keep NuGet paths short
+          # Replace feature->ft and hotfix->hf to save more space
+          BRANCH_SLUG=$(echo "$BRANCH_NAME" | sed 's/feature\//ft-/g; s/hotfix\//hf-/g; s/\//-/g' | cut -c 1-12)
+          PRERELEASE_ID="00-${BRANCH_SLUG}"
+          echo "Adding branch config: $BRANCH_NAME with prerelease: $PRERELEASE_ID"
+          
+          # Read current .releaserc, add the branch entry, and save
+          jq --arg name "$BRANCH_NAME" --arg prerelease "$PRERELEASE_ID" \
+            '.branches += [{"name": $name, "prerelease": $prerelease}]' \
+            .releaserc > .releaserc.tmp && mv .releaserc.tmp .releaserc
+          
+          echo "Updated .releaserc:"
+          cat .releaserc
+        else
+          echo "Branch does not match hotfix/* or feature/*, no update needed"
+        fi
+
     - name: Generate Release Notes Body
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
+        BRANCH_NAME="${{ github.ref_name }}"
+        
+        # Check if this is a feature or hotfix branch test release
+        if [[ "$BRANCH_NAME" == hotfix/* ]] || [[ "$BRANCH_NAME" == feature/* ]]; then
+          echo "## ⚠️ Test Release from \`$BRANCH_NAME\`" > release_body.md
+          echo "" >> release_body.md
+          echo "This is a test release for development and testing purposes only." >> release_body.md
+          echo "" >> release_body.md
+          echo "### Installation" >> release_body.md
+          echo "" >> release_body.md
+          cat << 'EOF' >> release_body.md
+        ```bash
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://nuget.pkg.github.com/nul800sebastiaan/index.json
+        ```
+        EOF
         # Check if publishing to nuget.org (for stable or beta releases)
-        if [[ "${{ github.event.inputs.publish_to_nuget }}" == "true" && ("${{ needs.setup.outputs.semver }}" != *"-"* || "${{ needs.setup.outputs.semver }}" == *"-beta."*) ]]; then
+        elif [[ "${{ github.event.inputs.publish_to_nuget }}" == "true" && ("${{ needs.setup.outputs.semver }}" != *"-"* || "${{ needs.setup.outputs.semver }}" == *"-beta."*) ]]; then
           cat << 'EOF' > release_body.md
         ## Installation
         
