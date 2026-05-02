@@ -434,7 +434,7 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: [setup, publish]
-    if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
+    if: ${{ needs.setup.outputs.new_release_published == 'true' }}
     permissions:
       contents: write
       issues: write
@@ -474,6 +474,7 @@ jobs:
         fi
 
     - name: Generate Release Notes Body
+      if: ${{ github.event.inputs.create_github_release != 'false' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -566,6 +567,7 @@ jobs:
           conventional-changelog-conventionalcommits
 
     - name: Update GitHub Release with Custom Notes
+      if: ${{ github.event.inputs.create_github_release != 'false' }}
       uses: softprops/action-gh-release@v3
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
@@ -605,6 +607,9 @@ jobs:
         echo "## 🚀 Release Published: v${{ needs.setup.outputs.semver }}" >> $GITHUB_STEP_SUMMARY
         echo "**Branch:** \`${GITHUB_REF#refs/heads/}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Tag:** \`v${{ needs.setup.outputs.semver }}\`" >> $GITHUB_STEP_SUMMARY
+        if [[ "${{ github.event.inputs.create_github_release }}" == "false" ]]; then
+          echo "**Note:** GitHub Release creation was skipped (create_github_release=false)" >> $GITHUB_STEP_SUMMARY
+        fi
 
   security:
     name: Security Scan
