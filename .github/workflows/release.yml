@@ -45,13 +45,13 @@ jobs:
       - name: Fetch all tags
         run: git fetch --force --tags
         
-      - name: Semantic Release
+      - name: Semantic Release (Dry Run)
         id: semantic
         uses: cycjimmy/semantic-release-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          dry_run: false
+          dry_run: true
           extra_plugins: |
             @semantic-release/exec
             @semantic-release/commit-analyzer
@@ -379,8 +379,51 @@ jobs:
         export PATH="$HOME/.dotnet/tools:$PATH"
         dotnet validate package local nuget-packages/Cultiv.EnvironmentInspect.*.nupkg
     
+    - name: Add GitHub Packages Source
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
+
+    - name: Push GitHub Package
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      run: dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
+    
+    - name: Push MyGet Package
+      if: needs.setup.outputs.new_release_published == 'true' && env.MYGET_API_KEY != ''
+      run: |
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
+      
+    - name: Push to Nuget.org
+      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/')) && (!contains(needs.setup.outputs.semver, '-') || contains(needs.setup.outputs.semver, '-beta.')) }}
+      run: |
+        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+    - name: Write Summary
+      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
+      run: |
+        echo "## 📦 Package Built: v${{ needs.setup.outputs.semver }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${GITHUB_REF#refs/heads/}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** Ready for release" >> $GITHUB_STEP_SUMMARY
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [setup, publish]
+    if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+    - uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        filter: tree:0
+    
+    - name: Fetch all tags
+      run: git fetch --force --tags
+
     - name: Generate Release Notes Body
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
@@ -423,17 +466,6 @@ jobs:
           echo "## Installation" > release_body.md
           echo "" >> release_body.md
           
-          if [[ -n "${{ env.MYGET_API_KEY }}" ]]; then
-            cat << 'EOF' >> release_body.md
-        ### From MyGet (pre-release)
-        
-        ```bash
-        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://www.myget.org/F/umbraco-packages/api/v3/index.json
-        ```
-        
-        EOF
-          fi
-          
           cat << 'EOF' >> release_body.md
         ### From GitHub Packages (pre-release)
         
@@ -441,41 +473,74 @@ jobs:
         dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://nuget.pkg.github.com/nul800sebastiaan/index.json
         ```
         EOF
+          
+          # Add MyGet section if API key is available (check via GitHub context)
+          if [[ -n "${{ secrets.MYGET_API_KEY }}" ]]; then
+            cat << 'EOF' >> release_body.md
+        
+        ### From MyGet (pre-release)
+        
+        ```bash
+        dotnet add package Cultiv.EnvironmentInspect --version ${{ needs.setup.outputs.semver }} --source https://www.myget.org/F/umbraco-packages/api/v3/index.json
+        ```
+        EOF
+          fi
         fi
-    
-    - name: Create GitHub Release
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
+
+    - name: Semantic Release
+      uses: cycjimmy/semantic-release-action@v6
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        dry_run: false
+        extra_plugins: |
+          @semantic-release/exec
+          @semantic-release/commit-analyzer
+          @semantic-release/release-notes-generator
+          @semantic-release/github
+          conventional-changelog-conventionalcommits
+
+    - name: Update GitHub Release with Custom Notes
       uses: softprops/action-gh-release@v3
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
         name: v${{ needs.setup.outputs.semver }}
-        generate_release_notes: ${{ github.event.inputs.publish_to_nuget != 'true' }}
-        prerelease: ${{ contains(needs.setup.outputs.semver, '-') }}
         body_path: release_body.md
-    
-    - name: Add GitHub Packages Source
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet nuget add source --username USERNAME --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github "https://nuget.pkg.github.com/nul800sebastiaan/index.json"
-
-    - name: Push GitHub Package
-      if: ${{ needs.setup.outputs.new_release_published == 'true' }}
-      run: dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg"  --api-key ${{ secrets.GITHUB_TOKEN }} --source "github" --skip-duplicate
-    
-    - name: Push MyGet Package
-      if: needs.setup.outputs.new_release_published == 'true' && env.MYGET_API_KEY != ''
-      run: |
-        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/api/v2/package --skip-duplicate
-        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.snupkg" --api-key ${{ env.MYGET_API_KEY }} --source https://www.myget.org/F/umbraco-packages/symbols/api/v2/package --skip-duplicate
-      
-    - name: Push to Nuget.org
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && github.event.inputs.publish_to_nuget == 'true' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/')) && (!contains(needs.setup.outputs.semver, '-') || contains(needs.setup.outputs.semver, '-beta.')) }}
-      run: |
-        dotnet nuget push "nuget-packages/Cultiv.EnvironmentInspect.*.nupkg" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+        prerelease: ${{ contains(needs.setup.outputs.semver, '-') }}
 
     - name: Merge release branch to develop
-      if: ${{ needs.setup.outputs.new_release_published == 'true' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/')) }}
-      run: .github/scripts/merge-to-develop.sh "${{ needs.setup.outputs.semver }}"
-  
+      if: ${{ startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/heads/beta/') }}
+      run: |
+        # Extract version from release branch (e.g., release/v2 -> v2)
+        VERSION_SUFFIX=$(echo ${GITHUB_REF#refs/heads/release/})
+        if [[ "$VERSION_SUFFIX" == "$GITHUB_REF" ]]; then
+          # For beta branches (e.g., beta/v2 -> v2)
+          VERSION_SUFFIX=$(echo ${GITHUB_REF#refs/heads/beta/})
+        fi
+        DEVELOP_BRANCH="develop/$VERSION_SUFFIX"
+        
+        # Configure git
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Fetch the develop branch
+        git fetch origin $DEVELOP_BRANCH
+        
+        # Checkout develop branch
+        git checkout $DEVELOP_BRANCH
+        
+        # Merge release branch into develop
+        git merge --no-ff origin/${GITHUB_REF#refs/heads/} -m "chore: merge ${GITHUB_REF#refs/heads/} into $DEVELOP_BRANCH after release ${{ needs.setup.outputs.semver }}"
+        
+        # Push changes
+        git push origin $DEVELOP_BRANCH
+
+    - name: Write Summary
+      run: |
+        echo "## 🚀 Release Published: v${{ needs.setup.outputs.semver }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** \`${GITHUB_REF#refs/heads/}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Tag:** \`v${{ needs.setup.outputs.semver }}\`" >> $GITHUB_STEP_SUMMARY
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest
