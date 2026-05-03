@@ -35,6 +35,13 @@ namespace Cultiv.EnvironmentInspect.Controllers
             return await _environmentService.GetEnvironmentDataAsync();
         }
 
+        [HttpGet("templates")]
+        [MapToApiVersion("1.0")]
+        public ConfigurationTemplatesDto GetConfigurationTemplates()
+        {
+            return _environmentService.GetConfigurationTemplates();
+        }
+
         [HttpGet("preferences")]
         [MapToApiVersion("1.0")]
         public async Task<UserPreferencesDto> GetUserPreferences()
@@ -84,6 +91,28 @@ namespace Cultiv.EnvironmentInspect.Controllers
             }
         }
 
+        [HttpPost("apply-configuration")]
+        [MapToApiVersion("1.0")]
+        public async Task<IActionResult> ApplyConfiguration([FromBody] ApplyConfigurationRequest request)
+        {
+            try
+            {
+                var success = await _environmentService.ApplyConfigurationAsync(request.ConfigJson);
+                if (success)
+                {
+                    return Ok(new { message = "Configuration applied successfully. Changes will take effect after restart." });
+                }
+                else
+                {
+                    return BadRequest(new { error = "Failed to apply configuration. Check logs for details." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
+        }
+
         private string GetCurrentUserKey()
         {
             var currentUser = _backOfficeSecurityAccessor.BackOfficeSecurity?.CurrentUser;
@@ -99,6 +128,9 @@ namespace Cultiv.EnvironmentInspect.Controllers
     {
         public List<EnvironmentVariable> Variables { get; set; } = new();
         public bool AzureWebAppAdvancedCopy { get; set; }
+        public bool HasRedactions { get; set; }
+        public bool IsLocal { get; set; }
+        public bool IsUmbracoCloud { get; set; }
     }
 
     public class ToggleStarRequest
@@ -109,5 +141,10 @@ namespace Cultiv.EnvironmentInspect.Controllers
     public class SetStarredSettingsRequest
     {
         public required List<string> StarredKeys { get; set; }
+    }
+
+    public class ApplyConfigurationRequest
+    {
+        public required string ConfigJson { get; set; }
     }
 }

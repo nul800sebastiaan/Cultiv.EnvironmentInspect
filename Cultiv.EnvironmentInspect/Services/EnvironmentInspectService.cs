@@ -1,10 +1,12 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Umbraco.Cms.Core.Cache;
+using Umbraco.Cms.Core.Hosting;
 
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.Controllers;
@@ -17,6 +19,8 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
     private readonly IAppPolicyCache _runtimeCache;
     private readonly ILogger<EnvironmentInspectService> _logger;
     private readonly IOptionsMonitor<EnvironmentInspectOptions> _options;
+    private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IHostingEnvironment _hostingEnvironment;
     private const string CacheKey = "Cultiv.EnvironmentInspect.ConfigData";
     private IDisposable? _optionsChangeRegistration;
     private DateTime _lastConfigChange = DateTime.MinValue;
@@ -26,12 +30,16 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         IConfiguration configuration,
         AppCaches appCaches,
         ILogger<EnvironmentInspectService> logger,
-        IOptionsMonitor<EnvironmentInspectOptions> options)
+        IOptionsMonitor<EnvironmentInspectOptions> options,
+        IHttpContextAccessor httpContextAccessor,
+        IHostingEnvironment hostingEnvironment)
     {
         _configuration = configuration;
         _runtimeCache = appCaches.RuntimeCache;
         _logger = logger;
         _options = options;
+        _httpContextAccessor = httpContextAccessor;
+        _hostingEnvironment = hostingEnvironment;
 
         // Register for options change notifications
         _optionsChangeRegistration = _options.OnChange(opts =>
@@ -75,11 +83,61 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
             CacheKey,
             () => BuildEnvironmentData())!);
 
+        // Detect environment
+        var hasRedactions = variables.Any(v => !string.IsNullOrEmpty(v.RedactedMode));
+        var isUmbracoCloud = DetectUmbracoCloud();
+        var isLocal = DetectIsLocal(isUmbracoCloud);
+
         return new EnvironmentInspectResponse
         {
             Variables = variables,
-            AzureWebAppAdvancedCopy = _options.CurrentValue.AzureWebAppAdvancedCopy
+            AzureWebAppAdvancedCopy = _options.CurrentValue.AzureWebAppAdvancedCopy,
+            HasRedactions = hasRedactions,
+            IsLocal = isLocal,
+            IsUmbracoCloud = isUmbracoCloud
         };
+    }
+
+    private bool DetectUmbracoCloud()
+    {
+        // Check if running on Umbraco Cloud (online)
+        var isRunningOnCloud = _configuration.GetValue<bool>("Umbraco:Cloud:IsRunningOnCloud");
+        if (isRunningOnCloud)
+        {
+            return true;
+        }
+
+        // Check if configured for Umbraco Cloud (locally) - has Environment ID
+        var cloudEnvironmentId = _configuration.GetValue<string>("Umbraco:Cloud:Identity:EnvironmentId");
+        return !string.IsNullOrEmpty(cloudEnvironmentId);
+    }
+
+    private bool DetectIsLocal(bool isUmbracoCloud)
+    {
+        // If Umbraco Cloud online, definitely not local
+        var isRunningOnCloud = _configuration.GetValue<bool>("Umbraco:Cloud:IsRunningOnCloud");
+        if (isRunningOnCloud)
+        {
+            return false;
+        }
+
+        // Check if in Development environment
+        var environmentName = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT")
+                             ?? _configuration.GetValue<string>("DOTNET_ENVIRONMENT")
+                             ?? "Production";
+
+        var isDevelopmentEnvironment = environmentName.Equals("Development", StringComparison.OrdinalIgnoreCase);
+
+        // Also check if the request is from localhost
+        var isLocalhost = false;
+        if (_httpContextAccessor.HttpContext?.Request != null)
+        {
+            var host = _httpContextAccessor.HttpContext.Request.Host.Host.ToLowerInvariant();
+            isLocalhost = host == "localhost" || host == "127.0.0.1" || host == "::1";
+        }
+
+        // Both conditions must be true for local development
+        return isDevelopmentEnvironment && isLocalhost;
     }
 
     private List<EnvironmentVariable> BuildEnvironmentData()
@@ -620,6 +678,219 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
         // Default: full redaction with fixed length
         return new string(options.RedactionCharacter[0], 8);
+    }
+
+    public async Task<bool> ApplyConfigurationAsync(string configJson)
+    {
+        try
+        {
+            // Only allow in development environment - check via hosting environment name
+            var environmentName = _configuration.GetValue<string>("ASPNETCORE_ENVIRONMENT")
+                                 ?? _configuration.GetValue<string>("DOTNET_ENVIRONMENT")
+                                 ?? "Production";
+
+            if (!environmentName.Equals("Development", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("ApplyConfiguration called in non-development environment");
+                return false;
+            }
+
+            // Find the appsettings.json file in the content root
+            var contentRoot = _hostingEnvironment.ApplicationPhysicalPath;
+            var appsettingsPath = Path.Combine(contentRoot, "appsettings.json");
+
+            if (!File.Exists(appsettingsPath))
+            {
+                _logger.LogError("appsettings.json not found at {Path}", appsettingsPath);
+                return false;
+            }
+
+            // Read the existing appsettings.json
+            var existingJson = await File.ReadAllTextAsync(appsettingsPath);
+            
+            // Configure JSON options to allow comments and trailing commas
+            var deserializeOptions = new JsonSerializerOptions
+            {
+                ReadCommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            };
+            
+            var existingConfig = JsonSerializer.Deserialize<JsonElement>(existingJson, deserializeOptions);
+
+            // Parse the incoming config
+            var newConfig = JsonSerializer.Deserialize<JsonElement>(configJson);
+
+            // Merge the configurations
+            var mergedConfig = MergeJsonElements(existingConfig, newConfig);
+
+            // Write back to appsettings.json with formatting
+            var serializeOptions = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            };
+
+            var updatedJson = JsonSerializer.Serialize(mergedConfig, serializeOptions);
+            await File.WriteAllTextAsync(appsettingsPath, updatedJson);
+
+            _logger.LogInformation("Successfully applied configuration to appsettings.json");
+
+            // Clear the cache to reload with new config
+            _runtimeCache.Clear(CacheKey);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to apply configuration to appsettings.json");
+            return false;
+        }
+    }
+
+    private JsonElement MergeJsonElements(JsonElement target, JsonElement source)
+    {
+        if (source.ValueKind == JsonValueKind.Object && target.ValueKind == JsonValueKind.Object)
+        {
+            var merged = new Dictionary<string, JsonElement>();
+
+            // Copy all properties from target
+            foreach (var property in target.EnumerateObject())
+            {
+                merged[property.Name] = property.Value;
+            }
+
+            // Merge properties from source
+            foreach (var property in source.EnumerateObject())
+            {
+                if (merged.TryGetValue(property.Name, out var existingValue))
+                {
+                    // Recursively merge objects
+                    merged[property.Name] = MergeJsonElements(existingValue, property.Value);
+                }
+                else
+                {
+                    merged[property.Name] = property.Value;
+                }
+            }
+
+            // Convert back to JsonElement
+            var json = JsonSerializer.Serialize(merged);
+            return JsonSerializer.Deserialize<JsonElement>(json);
+        }
+
+        // For non-objects, source overwrites target
+        return source;
+    }
+
+    public ConfigurationTemplatesDto GetConfigurationTemplates()
+    {
+        // Default template for standard installations
+        var defaultTemplate = @"{
+  ""EnvironmentInspect"": {
+    ""AzureWebAppAdvancedCopy"": true,
+    ""Exclude"": [
+      ""^APPSETTING_"",
+      ""^AZURE_"",
+      ""^EnvironmentInspect"",
+      ""^\\$schema$""
+    ],
+    ""Redact"": [
+      {
+        ""Key"": ""ConnectionStrings:.*"",
+        ""RedactionMode"": ""Advanced"",
+        ""RedactionOptions"": {
+          ""Keys"": [ ""Password"", ""PWD"" ],
+          ""KeepFirst"": 2,
+          ""KeepLast"": 2
+        }
+      },
+      {
+        ""Key"": ""Umbraco:Storage:AzureBlob:Media:ConnectionString"",
+        ""RedactionMode"": ""Advanced"",
+        ""RedactionOptions"": {
+          ""Keys"": [ ""AccountKey"" ],
+          ""KeepFirst"": 2,
+          ""KeepLast"": 2
+        }
+      },
+      {
+        ""Key"": ""^WEBSITE_.*_KEY$"",
+        ""RedactionMode"": ""Full""
+      },
+      {
+        ""Key"": "".*Password$"",
+        ""RedactionMode"": ""Full""
+      },
+      {
+        ""Key"": "".*Secret(?!.*HeaderName).*"",
+        ""RedactionMode"": ""Partial""
+      }
+    ]
+  }
+}";
+
+        // Umbraco Cloud template with cloud-specific rules
+        var umbracoCloudTemplate = @"{
+  ""EnvironmentInspect"": {
+    ""Exclude"": [
+      ""^APPSETTING_"",
+      ""^AZURE_"",
+      ""^EnvironmentInspect"",
+      ""^\\$schema$""
+    ],
+    ""Redact"": [
+      {
+        ""Key"": ""ConnectionStrings:umbracoDbDSN"",
+        ""RedactionMode"": ""Advanced"",
+        ""RedactionOptions"": {
+          ""Keys"": [ ""Password"", ""PWD"" ],
+          ""KeepFirst"": 2,
+          ""KeepLast"": 2
+        }
+      },
+      {
+        ""Key"": "".*SharedAccessSignature.*"",
+        ""RedactionMode"": ""Advanced"",
+        ""RedactionOptions"": {
+          ""Keys"": [ ""sig"" ],
+          ""KeepFirst"": 2,
+          ""KeepLast"": 2
+        }
+      },
+      {
+        ""Key"": ""^UMBRACO:CLOUD:EXTERNALLOGINPROVIDER:\\\\d+$"",
+        ""RedactionMode"": ""Advanced"",
+        ""RedactionOptions"": {
+          ""Keys"": [ ""ClientSecret"" ],
+          ""KeepFirst"": 2,
+          ""KeepLast"": 2
+        }
+      },
+      {
+        ""Key"": "".*Secret(?!.*HeaderName).*"",
+        ""RedactionMode"": ""Partial""
+      },
+      {
+        ""Key"": "".*Password$"",
+        ""RedactionMode"": ""Partial""
+      },
+      {
+        ""Key"": ""^WEBSITE_.*_KEY$"",
+        ""RedactionMode"": ""Full""
+      },
+      {
+        ""Key"": ""Umbraco:Forms:FieldTypes:Recaptcha3:PrivateKey"",
+        ""RedactionMode"": ""Partial""
+      }
+    ]
+  }
+}";
+
+        return new ConfigurationTemplatesDto
+        {
+            DefaultTemplate = defaultTemplate,
+            UmbracoCloudTemplate = umbracoCloudTemplate
+        };
     }
 
     public void Dispose()

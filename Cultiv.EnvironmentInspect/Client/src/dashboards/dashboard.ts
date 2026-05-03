@@ -1,6 +1,7 @@
 import { LitElement, css, html, customElement, property, repeat, when, state } from "@umbraco-cms/backoffice/external/lit";
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_NOTIFICATION_CONTEXT } from '@umbraco-cms/backoffice/notification';
+import { umbConfirmModal } from '@umbraco-cms/backoffice/modal';
 import { EnvironmentVariable, EnvironmentInspectResponse, UserPreferencesDto } from "../api/types.gen";
 import { CultivEnvironmentInspectService } from "../api/sdk.gen";
 
@@ -25,6 +26,12 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
+  @state() hasRedactions: boolean = false; // Set from server
+  @state() isLocal: boolean = false; // Set from server
+  @state() isUmbracoCloud: boolean = false; // Set from server
+  @state() dismissInfoPanel: boolean = false; // User preference to dismiss info panel
+  @state() defaultConfigTemplate: string = ''; // Server-side default template
+  @state() umbracoCloudConfigTemplate: string = ''; // Server-side Umbraco Cloud template
   private togglingStar: Set<string> = new Set(); // Track in-flight toggle requests
   private readonly incrementSize: number = 50;
 
@@ -221,6 +228,117 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     this.settingsPopoverOpen = false;
   }
 
+  renderInfoPanel() {
+    // If redactions are already configured, show simplified help panel
+    if (this.hasRedactions) {
+      return html`
+        <uui-box class="info-panel info-panel-success" headline="✅ Redactions are Configured">
+          <uui-button
+            slot="header-actions"
+            compact
+            look="secondary"
+            label="Dismiss"
+            title="Hide this panel"
+            @click=${this.dismissInfo}>
+            <uui-icon name="icon-delete"></uui-icon>
+          </uui-button>
+          <div class="info-content">
+            <p>Your configuration includes redaction rules to protect sensitive values.</p>
+            <p><strong>Helpful resources:</strong></p>
+            <ul>
+              <li><a href="https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONFIGURATION.md" target="_blank">Configuration Guide</a> - Learn about all available options</li>
+              <li><a href="https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/README.md" target="_blank">Documentation</a> - Package features and usage</li>
+            </ul>
+          </div>
+        </uui-box>
+      `;
+    }
+
+    // Show full onboarding for first-time users (no redactions)
+    const configSnippet = this.isUmbracoCloud ? this.umbracoCloudConfigTemplate : this.defaultConfigTemplate;
+    const isOnline = !this.isLocal;
+
+    let title = '';
+    let message = '';
+    let showApplyButton = false;
+
+    if (this.isLocal && this.isUmbracoCloud) {
+      title = '🔧 Configure Redactions for Umbraco Cloud';
+      message = 'Add default Umbraco Cloud redaction rules to protect sensitive configuration values.';
+      showApplyButton = true;
+    } else if (this.isLocal && !this.isUmbracoCloud) {
+      title = '🔧 Configure Redactions';
+      message = 'Add default redaction rules to protect sensitive configuration values like passwords and connection strings.';
+      showApplyButton = true;
+    } else if (isOnline && this.isUmbracoCloud) {
+      title = '📋 Umbraco Cloud Configuration';
+      message = 'Add these redaction rules to your appsettings.json file to protect sensitive Umbraco Cloud values. Copy the configuration below and commit it to your repository.';
+      showApplyButton = false;
+    } else {
+      title = '📋 Recommended Configuration';
+      message = 'Add these redaction rules to your appsettings.json file to protect sensitive values. Copy the configuration below and commit it to your repository.';
+      showApplyButton = false;
+    }
+
+    return html`
+      <uui-box class="info-panel" headline=${title}>
+        <uui-button
+          slot="header-actions"
+          compact
+          look="secondary"
+          label="Dismiss"
+          title="Hide this panel"
+          @click=${this.dismissInfo}>
+          <uui-icon name="icon-delete"></uui-icon>
+        </uui-button>
+        <div class="info-content">
+          <p>${message}</p>
+          ${when(showApplyButton, () => html`
+            <p><strong>Note:</strong> Configuration changes take effect immediately thanks to hot reload.</p>
+          `, () => html`
+            <p><strong>Note:</strong> Configuration changes require a restart or redeployment to take effect in production.</p>
+          `)}
+          <div class="config-snippet-container">
+            <div class="config-snippet-header">
+              <span class="config-label">${this.isUmbracoCloud ? 'Umbraco Cloud Configuration' : 'Default Configuration'}</span>
+              <div class="config-actions">
+                ${when(showApplyButton, () => html`
+                  <uui-button
+                    compact
+                    look="primary"
+                    color="positive"
+                    label="Apply now"
+                    title="Apply configuration to appsettings.json"
+                    @click=${() => this.applyConfiguration()}>
+                    ✅ Apply now
+                  </uui-button>
+                `)}
+                <uui-button
+                  compact
+                  look=${showApplyButton ? 'secondary' : 'primary'}
+                  label="Copy configuration"
+                  title="Copy to clipboard"
+                  @click=${() => this.copyConfigSnippet(configSnippet)}>
+                  📋 Copy
+                </uui-button>
+              </div>
+            </div>
+            <pre class="config-snippet"><code>${configSnippet}</code></pre>
+          </div>
+          <div class="info-links">
+            <a href="https://github.com/cultiv-environmentinspect/Cultiv.EnvironmentInspect#readme" target="_blank" rel="noopener noreferrer">
+              📖 Documentation
+            </a>
+            <span class="link-separator">•</span>
+            <a href="https://github.com/cultiv-environmentinspect/Cultiv.EnvironmentInspect/blob/main/CONFIGURATION.md" target="_blank" rel="noopener noreferrer">
+              ⚙️ Configuration Guide
+            </a>
+          </div>
+        </div>
+      </uui-box>
+    `;
+  }
+
   render() {
     return html`
       ${when(this.isLoading, 
@@ -338,8 +456,24 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   </uui-button>
                 `)}
               </uui-input>
+              ${when(!this.shouldShowInfoPanel, () => html`
+                <div class="help-button-wrapper" style="margin-left: 0.5rem;">
+                  <uui-button
+                    compact
+                    look="outline"
+                    label="Show help"
+                    title="${!this.hasRedactions ? 'No redactions configured - click for setup help' : 'Show configuration help panel'}"
+                    @click=${this.showInfo}>
+                    <uui-icon name="icon-help-alt"></uui-icon>
+                  </uui-button>
+                  ${when(!this.hasRedactions, () => html`
+                    <uui-icon class="warning-indicator" name="icon-alert"></uui-icon>
+                  `)}
+                </div>
+              `)}
             </div>
           </div>
+          ${when(this.shouldShowInfoPanel, () => this.renderInfoPanel())}
           ${when(this.azureWebAppAdvancedCopy && this.showAzureColumn && this.selectedForAzure.size > 0, () => html`
             <div class="bulk-action-bar">
               <span class="selection-count">${this.selectedForAzure.size} item${this.selectedForAzure.size === 1 ? '' : 's'} selected</span>
@@ -501,15 +635,30 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
   async firstUpdated() {
     try {
-      // Load environment data and user preferences in parallel
-      const [envData, prefsData] = await Promise.all([
+      // Load environment data, user preferences, and templates in parallel
+      const [envData, prefsData, templatesData] = await Promise.all([
         this.getData(),
-        this.getUserPreferences()
+        this.getUserPreferences(),
+        this.getConfigurationTemplates()
       ]);
       
       if (envData.data) {
         this.environmentVariables = envData.data.variables || [];
         this.azureWebAppAdvancedCopy = envData.data.azureWebAppAdvancedCopy || false;
+        this.hasRedactions = envData.data.hasRedactions || false;
+        this.isLocal = envData.data.isLocal || false;
+        this.isUmbracoCloud = envData.data.isUmbracoCloud || false;
+        
+        // Set initial dismissInfoPanel state based on whether redactions exist
+        // If redactions are configured, hide panel by default (user already configured)
+        // If no redactions, show panel by default (help user get started)
+        // This will be overridden by saved preference below if one exists
+        this.dismissInfoPanel = this.hasRedactions;
+      }
+      
+      if (templatesData.data) {
+        this.defaultConfigTemplate = templatesData.data.defaultTemplate || '';
+        this.umbracoCloudConfigTemplate = templatesData.data.umbracoCloudTemplate || '';
       }
       
       if (prefsData.data) {
@@ -524,6 +673,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           this.onlyStarred = (prefsData.data.uiSettings.onlyStarred ?? false) && this.starredSettings.size > 0;
           this.replaceColonWithUnderscore = prefsData.data.uiSettings.replaceColonWithUnderscore ?? false;
           this.showAzureColumn = prefsData.data.uiSettings.showAzureColumn ?? false;
+          this.dismissInfoPanel = prefsData.data.uiSettings.dismissInfoPanel ?? false;
         }
       }
     } catch (e) {
@@ -543,7 +693,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       return await CultivEnvironmentInspectService.getUserPreferences();
     } catch (e) {
       console.error("Failed to load user preferences", e);
-      return { data: { starredSettings: [], uiSettings: { excludeEmptyValues: true, onlyRedacted: false, onlyStarred: false, replaceColonWithUnderscore: false, showAzureColumn: false } } };
+      return { data: { starredSettings: [], uiSettings: { excludeEmptyValues: true, onlyRedacted: false, onlyStarred: false, replaceColonWithUnderscore: false, showAzureColumn: false, dismissInfoPanel: false } } };
+    }
+  }
+  
+  async getConfigurationTemplates(): Promise<{ data?: any }> {
+    try {
+      return await CultivEnvironmentInspectService.getConfigurationTemplates();
+    } catch (e) {
+      console.error("Failed to load configuration templates", e);
+      return { data: { defaultTemplate: '', umbracoCloudTemplate: '' } };
     }
   }
   
@@ -555,11 +714,98 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           onlyRedacted: this.onlyRedacted,
           onlyStarred: this.onlyStarred,
           replaceColonWithUnderscore: this.replaceColonWithUnderscore,
-          showAzureColumn: this.showAzureColumn
+          showAzureColumn: this.showAzureColumn,
+          dismissInfoPanel: this.dismissInfoPanel
         }
       });
     } catch (e) {
       console.error("Failed to save UI settings", e);
+    }
+  }
+
+  dismissInfo = async () => {
+    this.dismissInfoPanel = true;
+    await this.saveUISettings();
+  }
+
+  showInfo = async () => {
+    this.dismissInfoPanel = false;
+    await this.saveUISettings();
+  }
+
+  get shouldShowInfoPanel(): boolean {
+    // Show panel based on user preference (help button shows, dismiss hides)
+    return !this.dismissInfoPanel;
+  }
+
+  async copyConfigSnippet(config: string) {
+    await this.copyToClipboard(config);
+  }
+
+  async applyConfiguration() {
+    const configSnippet = this.isUmbracoCloud ? this.umbracoCloudConfigTemplate : this.defaultConfigTemplate;
+    
+    // Show Umbraco confirmation modal
+    try {
+      await umbConfirmModal(this, {
+        headline: 'Apply Configuration',
+        content: html`
+          <p>This will update your <strong>appsettings.json</strong> file with the default redaction rules.</p>
+          <p>Changes will take effect immediately thanks to hot reload.</p>
+          <p>Do you want to continue?</p>
+        `,
+        color: 'positive',
+        confirmLabel: 'Apply Configuration',
+        cancelLabel: 'Cancel'
+      });
+    } catch {
+      // User cancelled
+      return;
+    }
+    
+    try {
+      const { error } = await CultivEnvironmentInspectService.applyConfiguration({
+        body: { configJson: configSnippet }
+      });
+      
+      if (error) {
+        console.error('API error response:', error);
+        throw new Error(`Failed to apply configuration: ${JSON.stringify(error)}`);
+      }
+      
+      const notificationContext = await this.getContext(UMB_NOTIFICATION_CONTEXT);
+      notificationContext?.peek('positive', { 
+        data: { 
+          headline: 'Configuration Applied',
+          message: 'Configuration has been written to appsettings.json and is now active.' 
+        } 
+      });
+      
+      // Dismiss the info panel after successful apply
+      await this.dismissInfo();
+      
+      // Give hot reload a moment to process the configuration change
+      // before fetching the updated data
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Reload environment data to reflect the new redactions
+      const envData = await this.getData();
+      if (envData.data) {
+        this.environmentVariables = envData.data.variables || [];
+        this.hasRedactions = envData.data.hasRedactions || false;
+        this.azureWebAppAdvancedCopy = envData.data.azureWebAppAdvancedCopy || false;
+      }
+      
+    } catch (err) {
+      console.error('Failed to apply configuration: ', err);
+      
+      const notificationContext = await this.getContext(UMB_NOTIFICATION_CONTEXT);
+      notificationContext?.peek('danger', { 
+        data: { 
+          headline: 'Configuration Failed',
+          message: 'Could not apply configuration to appsettings.json. Check logs for details.' 
+        } 
+      });
     }
   }
 
@@ -606,10 +852,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         min-width: 250px;
         flex: 1;
         max-width: 500px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
 
       .search-section uui-input {
-        width: 100%;
+        flex: 1;
       }
 
       .search-section uui-icon {
@@ -673,6 +922,124 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         border-radius: 3px;
         font-family: monospace;
         font-size: 0.9em;
+      }
+
+      .info-panel {
+        margin: 1rem;
+        background-color: var(--uui-color-surface);
+        border: 2px solid var(--uui-color-warning);
+        border-radius: var(--uui-border-radius);
+        box-shadow: var(--uui-shadow-depth-2);
+      }
+
+      .info-panel-success {
+        border-color: var(--uui-color-positive);
+      }
+
+      .info-content {
+        padding: 0;
+      }
+
+      .info-content p {
+        margin: 0 0 1rem 0;
+        line-height: 1.6;
+        color: var(--uui-color-text);
+      }
+
+      .info-content strong {
+        font-weight: 600;
+      }
+
+      .config-snippet-container {
+        margin: 1rem 0;
+        border: 1px solid var(--uui-color-border);
+        border-radius: var(--uui-border-radius);
+        overflow: hidden;
+      }
+
+      .config-snippet-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background-color: var(--uui-color-surface-alt);
+        border-bottom: 1px solid var(--uui-color-border);
+      }
+
+      .config-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .config-label {
+        font-weight: 600;
+        font-size: 0.95em;
+        color: var(--uui-color-text);
+      }
+
+      .config-snippet {
+        margin: 0;
+        padding: 1rem;
+        background-color: var(--uui-color-surface-alt);
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .config-snippet code {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 0.85em;
+        line-height: 1.5;
+        color: var(--uui-color-text);
+        white-space: pre;
+      }
+
+      .info-links {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--uui-color-border);
+        margin-top: 1rem;
+      }
+
+      .info-links a {
+        color: var(--uui-color-interactive);
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.2s;
+      }
+
+      .help-button-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      .help-button-wrapper .warning-indicator {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        pointer-events: none;
+        color: var(--uui-color-warning);
+        font-size: 16px;
+        line-height: 1;
+        background-color: white;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      .info-links a:hover {
+        color: var(--uui-color-interactive-emphasis);
+        text-decoration: underline;
+      }
+
+      .link-separator {
+        color: var(--uui-color-border);
       }
 
       .content-container {

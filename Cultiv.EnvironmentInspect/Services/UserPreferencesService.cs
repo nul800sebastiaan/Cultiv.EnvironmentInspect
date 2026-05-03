@@ -50,6 +50,9 @@ internal class UserPreferencesService : IUserPreferencesService
                     case "_ui_showAzureColumn":
                         uiSettings.ShowAzureColumn = boolValue;
                         break;
+                    case "_ui_dismissInfoPanel":
+                        uiSettings.DismissInfoPanel = boolValue;
+                        break;
                 }
             }
         }
@@ -149,7 +152,8 @@ internal class UserPreferencesService : IUserPreferencesService
             { "_ui_onlyRedacted", uiSettings.OnlyRedacted },
             { "_ui_onlyStarred", uiSettings.OnlyStarred },
             { "_ui_replaceColonWithUnderscore", uiSettings.ReplaceColonWithUnderscore },
-            { "_ui_showAzureColumn", uiSettings.ShowAzureColumn }
+            { "_ui_showAzureColumn", uiSettings.ShowAzureColumn },
+            { "_ui_dismissInfoPanel", uiSettings.DismissInfoPanel }
         };
 
         foreach (var (key, value) in settingsMap)
