@@ -1077,7 +1077,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         }
       },
       {
-        ""Key"": ""^UMBRACO:CLOUD:EXTERNALLOGINPROVIDER:\\\\d+$"",
+        ""Key"": ""^UMBRACO:CLOUD:EXTERNALLOGINPROVIDER:\\d+$"",
         ""RedactionMode"": ""Advanced"",
         ""RedactionOptions"": {
           ""Keys"": [ ""ClientSecret"" ],
