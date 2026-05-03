@@ -21,4 +21,5 @@ public class UISettingsDto
     public bool OnlyStarred { get; set; } = false;
     public bool ReplaceColonWithUnderscore { get; set; } = false;
     public bool ShowAzureColumn { get; set; } = false;
+    public bool DismissInfoPanel { get; set; } = false;
 }

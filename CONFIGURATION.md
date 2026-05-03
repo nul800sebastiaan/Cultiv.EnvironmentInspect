@@ -249,6 +249,72 @@ Hide internal configuration and redact all passwords:
 }
 ```
 
+### Recommended Default Configuration
+
+This is the default configuration applied by the "Apply now" button in the dashboard. It provides comprehensive protection for common scenarios including database passwords, Azure storage keys, website keys, and generic secrets:
+
+```json
+{
+  "EnvironmentInspect": {
+    "AzureWebAppAdvancedCopy": true,
+    "Exclude": [
+      "^APPSETTING_",
+      "^AZURE_",
+      "^EnvironmentInspect",
+      "^\\$schema$"
+    ],
+    "Redact": [
+      {
+        "Key": "ConnectionStrings:.*",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "Password", "PWD" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": "Umbraco:Storage:AzureBlob:Media:ConnectionString",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "AccountKey" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": "^WEBSITE_.*_KEY$",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*Password$",
+        "RedactionMode": "Full"
+      },
+      {
+        "Key": ".*Secret(?!.*HeaderName).*",
+        "RedactionMode": "Partial"
+      }
+    ]
+  }
+}
+```
+
+**Results:**
+- Connection string password: `7R••••($` (extracted from connection string) 🔐
+- Azure Blob Storage AccountKey: `hG••••9k` (extracted from connection string) 🔐
+- Keys matching `^WEBSITE_.*_KEY$`: `••••••••` 🔒
+- Keys matching `.*Password$`: `••••••••` 🔒
+- Keys matching `.*Secret(?!.*HeaderName).*`: `S3cr••••XyZ` 👁️
+
+This configuration:
+- **Excludes** internal configuration keys that clutter the dashboard
+- **Extracts and redacts** passwords from connection strings using Advanced mode
+- **Extracts and redacts** AccountKey from Azure Blob Storage connection strings
+- **Fully redacts** all Azure website authentication keys
+- **Fully redacts** any configuration keys ending with "Password"
+- **Partially redacts** secrets while keeping some visibility (excludes keys with "HeaderName" to avoid redacting public header names)
+- **Enables** Azure Web App JSON export feature
+
 ### Provider-Based Exclusion Example
 
 Hide all values from development configuration files and Azure Key Vault:

@@ -9,6 +9,36 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
-    }
+    },
+    "Cultiv.EnvironmentInspect.DemoSiteOnline": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:44310",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      }
+    },    
+    "Cultiv.EnvironmentInspect.DemoSite.Cloudlocal": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:44310",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "Umbraco__Cloud__Identity__EnvironmentId": "00000000-0000-0000-0000-000000000000"        
+      }
+    },
+    "Cultiv.EnvironmentInspect.DemoSite.CloudOnline": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "https://localhost:44310",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production",
+        "Umbraco__Cloud__Identity__EnvironmentId": "00000000-0000-0000-0000-000000000000",
+        "Umbraco__Cloud__IsRunningOnCloud": "true"
+      }
+    }    
   }
 }
