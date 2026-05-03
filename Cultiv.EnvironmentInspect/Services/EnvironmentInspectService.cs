@@ -678,7 +678,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
         return new string(options.RedactionCharacter[0], 8);
     }
 
-    public async Task<bool> ApplyConfigurationAsync(string configJson)
+    public async Task<bool> ApplyConfigurationAsync(string templateName)
     {
         try
         {
@@ -693,6 +693,15 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                 return false;
             }
 
+            // Validate and get the template
+            var templates = GetConfigurationTemplates();
+            string configJson = templateName.ToLowerInvariant() switch
+            {
+                "default" => templates.DefaultTemplate,
+                "umbracocloud" => templates.UmbracoCloudTemplate,
+                _ => throw new ArgumentException($"Unknown template name: {templateName}", nameof(templateName))
+            };
+
             // Find the appsettings.json file in the content root
             var contentRoot = _hostingEnvironment.ApplicationPhysicalPath;
             var appsettingsPath = Path.Combine(contentRoot, "appsettings.json");
@@ -703,8 +712,8 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                 return false;
             }
 
-            // Read the existing appsettings.json
-            var existingJson = await File.ReadAllTextAsync(appsettingsPath);
+            // Read the existing appsettings.json as text
+            var existingText = await File.ReadAllTextAsync(appsettingsPath);
 
             // Configure JSON options to allow comments and trailing commas
             var deserializeOptions = new JsonSerializerOptions
@@ -713,23 +722,88 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
                 AllowTrailingCommas = true
             };
 
-            var existingConfig = JsonSerializer.Deserialize<JsonElement>(existingJson, deserializeOptions);
+            // Parse to understand structure
+            var existingConfig = JsonSerializer.Deserialize<JsonElement>(existingText, deserializeOptions);
+            var templateConfig = JsonSerializer.Deserialize<JsonElement>(configJson);
+            var templateSection = templateConfig.GetProperty("EnvironmentInspect");
 
-            // Parse the incoming config
-            var newConfig = JsonSerializer.Deserialize<JsonElement>(configJson);
-
-            // Merge the configurations
-            var mergedConfig = MergeJsonElements(existingConfig, newConfig);
-
-            // Write back to appsettings.json with formatting
-            var serializeOptions = new JsonSerializerOptions
+            // Try to preserve comments by replacing only the EnvironmentInspect section
+            string updatedText;
+            try
             {
-                WriteIndented = true,
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
+                _logger.LogDebug("Attempting comment preservation in appsettings.json");
 
-            var updatedJson = JsonSerializer.Serialize(mergedConfig, serializeOptions);
-            await File.WriteAllTextAsync(appsettingsPath, updatedJson);
+                if (existingConfig.TryGetProperty("EnvironmentInspect", out var existingSection))
+                {
+                    _logger.LogDebug("Found existing EnvironmentInspect section, performing merge");
+
+                    // Merge the sections
+                    var mergedSection = MergeJsonElements(existingSection, templateSection);
+
+                    var serializeOptions = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    };
+
+                    var newSectionJson = JsonSerializer.Serialize(mergedSection, serializeOptions);
+                    _logger.LogDebug("Merged section JSON length: {Length} characters", newSectionJson.Length);
+
+                    // Replace the section while preserving comments
+                    _logger.LogDebug("Calling ReplaceJsonSection...");
+                    updatedText = ReplaceJsonSection(existingText, "EnvironmentInspect", newSectionJson);
+                    _logger.LogDebug("ReplaceJsonSection completed, result length: {Length} characters", updatedText.Length);
+                }
+                else
+                {
+                    _logger.LogDebug("No existing EnvironmentInspect section, inserting new section");
+
+                    // Insert new section
+                    var serializeOptions = new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                    };
+
+                    var newSectionJson = JsonSerializer.Serialize(templateSection, serializeOptions);
+                    _logger.LogDebug("New section JSON length: {Length} characters", newSectionJson.Length);
+
+                    _logger.LogDebug("Calling InsertJsonSection...");
+                    updatedText = InsertJsonSection(existingText, "EnvironmentInspect", newSectionJson);
+                    _logger.LogDebug("InsertJsonSection completed, result length: {Length} characters", updatedText.Length);
+                }
+
+                // Validate the result by parsing (Skip allows comments to be present, they're just ignored)
+                _logger.LogDebug("Validating result JSON is well-formed...");
+                var validateOptions = new JsonSerializerOptions
+                {
+                    ReadCommentHandling = JsonCommentHandling.Skip,
+                    AllowTrailingCommas = true
+                };
+
+                JsonSerializer.Deserialize<JsonElement>(updatedText, validateOptions);
+                _logger.LogDebug("Validation successful - JSON is well-formed");
+
+                _logger.LogInformation("Successfully preserved comments in appsettings.json");
+            }
+            catch (Exception ex)
+            {
+                // Fallback: use full serialization (loses comments but guaranteed valid)
+                _logger.LogWarning(ex, "Failed to preserve comments at step: {Message}. Falling back to full rewrite", ex.Message);
+
+                var mergedConfig = MergeJsonElements(existingConfig, templateConfig);
+
+                var serializeOptions = new JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+                };
+
+                updatedText = JsonSerializer.Serialize(mergedConfig, serializeOptions);
+            }
+
+            // Write the result
+            await File.WriteAllTextAsync(appsettingsPath, updatedText);
 
             _logger.LogInformation("Successfully applied configuration to appsettings.json");
 
@@ -762,11 +836,28 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
             {
                 if (merged.TryGetValue(property.Name, out var existingValue))
                 {
-                    // Recursively merge objects
-                    merged[property.Name] = MergeJsonElements(existingValue, property.Value);
+                    // For arrays: preserve existing if it has content, otherwise use source
+                    if (existingValue.ValueKind == JsonValueKind.Array && property.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        // If existing array is empty, use source array (from template)
+                        // If existing array has items, preserve it (user's custom config)
+                        merged[property.Name] = existingValue.GetArrayLength() > 0 ? existingValue : property.Value;
+                    }
+                    else if (existingValue.ValueKind == JsonValueKind.Object && property.Value.ValueKind == JsonValueKind.Object)
+                    {
+                        // Recursively merge objects
+                        merged[property.Name] = MergeJsonElements(existingValue, property.Value);
+                    }
+                    else
+                    {
+                        // For primitives (boolean, string, number, null): preserve existing value
+                        // This prevents overwriting user's AzureWebAppAdvancedCopy, RedactionCharacter, etc.
+                        merged[property.Name] = existingValue;
+                    }
                 }
                 else
                 {
+                    // Property doesn't exist in target, add from source
                     merged[property.Name] = property.Value;
                 }
             }
@@ -776,8 +867,138 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
             return JsonSerializer.Deserialize<JsonElement>(json);
         }
 
-        // For non-objects, source overwrites target
+        // For non-objects, source overwrites target (shouldn't happen with the logic above)
         return source;
+    }
+
+    private string ReplaceJsonSection(string jsonText, string sectionName, string newSectionJson)
+    {
+        _logger.LogDebug("ReplaceJsonSection called for section: {SectionName}", sectionName);
+
+        // Find the section using a pattern that handles nested braces
+        // Pattern: "SectionName"\s*:\s*{...}
+        var pattern = $@"""{Regex.Escape(sectionName)}""\s*:\s*\{{";
+        var match = Regex.Match(jsonText, pattern);
+
+        if (!match.Success)
+        {
+            _logger.LogDebug("Pattern match failed for section: {SectionName}", sectionName);
+            throw new InvalidOperationException($"Could not find section '{sectionName}' in JSON");
+        }
+
+        _logger.LogDebug("Pattern match succeeded at index: {Index}", match.Index);
+
+        // Find the matching closing brace
+        int startIndex = match.Index;
+        int braceStart = jsonText.IndexOf('{', startIndex);
+        int braceCount = 1;
+        int endIndex = braceStart + 1;
+
+        _logger.LogDebug("Starting brace counting from index: {BraceStart}", braceStart);
+
+        while (endIndex < jsonText.Length && braceCount > 0)
+        {
+            char c = jsonText[endIndex];
+
+            // Skip strings to avoid counting braces inside string values
+            if (c == '"')
+            {
+                endIndex++;
+                while (endIndex < jsonText.Length && jsonText[endIndex] != '"')
+                {
+                    if (jsonText[endIndex] == '\\') endIndex++; // Skip escaped characters
+                    endIndex++;
+                }
+            }
+            else if (c == '{')
+            {
+                braceCount++;
+            }
+            else if (c == '}')
+            {
+                braceCount--;
+            }
+
+            endIndex++;
+        }
+
+        _logger.LogDebug("Found matching closing brace at index: {EndIndex}, braceCount: {BraceCount}", endIndex, braceCount);
+
+        // Extract the section to replace
+        var fullSection = jsonText.Substring(startIndex, endIndex - startIndex);
+        _logger.LogDebug("Extracted section length: {Length} characters", fullSection.Length);
+
+        // Get indentation from the original section
+        var lineStart = jsonText.LastIndexOf('\n', startIndex) + 1;
+        var indentation = jsonText.Substring(lineStart, startIndex - lineStart);
+        indentation = new string(indentation.TakeWhile(char.IsWhiteSpace).ToArray());
+        _logger.LogDebug("Detected indentation: '{Indentation}' ({Length} characters)", indentation, indentation.Length);
+
+        // Indent the new JSON
+        var indentedJson = IndentJson(newSectionJson, indentation);
+        var replacement = $"\"{sectionName}\": {indentedJson}";
+        _logger.LogDebug("Replacement text length: {Length} characters", replacement.Length);
+
+        var result = jsonText.Replace(fullSection, replacement);
+        _logger.LogDebug("Replace completed, result length: {Length} characters", result.Length);
+
+        return result;
+    }
+
+    private string InsertJsonSection(string jsonText, string sectionName, string newSectionJson)
+    {
+        _logger.LogDebug("InsertJsonSection called for section: {SectionName}", sectionName);
+
+        // Find the last property before the closing brace
+        var lastBraceIndex = jsonText.LastIndexOf('}');
+
+        if (lastBraceIndex == -1)
+        {
+            _logger.LogDebug("No closing brace found in JSON");
+            throw new InvalidOperationException("Invalid JSON structure");
+        }
+
+        _logger.LogDebug("Found last closing brace at index: {Index}", lastBraceIndex);
+
+        // Detect indentation (assume 2 spaces based on typical formatting)
+        var indentation = "  ";
+
+        // Check if we need a comma (if there's content before the closing brace)
+        var beforeClosing = jsonText.Substring(0, lastBraceIndex).TrimEnd();
+        bool needsComma = beforeClosing.Length > 0 && beforeClosing[beforeClosing.Length - 1] != '{';
+        _logger.LogDebug("Needs comma: {NeedsComma}", needsComma);
+
+        // Indent the new JSON
+        var indentedJson = IndentJson(newSectionJson, indentation);
+        var insertion = $"{(needsComma ? "," : "")}\n{indentation}\"{sectionName}\": {indentedJson}";
+        _logger.LogDebug("Insertion text length: {Length} characters", insertion.Length);
+
+        var result = jsonText.Insert(lastBraceIndex, insertion + "\n");
+        _logger.LogDebug("Insert completed, result length: {Length} characters", result.Length);
+
+        return result;
+    }
+
+    private string IndentJson(string json, string indentation)
+    {
+        var lines = json.Split('\n');
+        var indented = new List<string>();
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            if (i == 0)
+            {
+                // First line gets base indentation
+                indented.Add(lines[i]);
+            }
+            else
+            {
+                // Subsequent lines get additional indentation
+                indented.Add(indentation + lines[i]);
+            }
+        }
+
+        return string.Join("\n", indented);
     }
 
     public ConfigurationTemplatesDto GetConfigurationTemplates()

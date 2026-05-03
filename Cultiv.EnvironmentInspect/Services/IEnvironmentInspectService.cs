@@ -5,7 +5,7 @@ namespace Cultiv.EnvironmentInspect.Services;
 public interface IEnvironmentInspectService
 {
     Task<EnvironmentInspectResponse> GetEnvironmentDataAsync();
-    Task<bool> ApplyConfigurationAsync(string configJson);
+    Task<bool> ApplyConfigurationAsync(string templateName);
     ConfigurationTemplatesDto GetConfigurationTemplates();
 }
 

@@ -95,7 +95,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
         {
             try
             {
-                var success = await _environmentService.ApplyConfigurationAsync(request.ConfigJson);
+                var success = await _environmentService.ApplyConfigurationAsync(request.TemplateName);
                 if (success)
                 {
                     return Ok(new { message = "Configuration applied successfully. Changes will take effect after restart." });
@@ -143,6 +143,6 @@ namespace Cultiv.EnvironmentInspect.Controllers
 
     public class ApplyConfigurationRequest
     {
-        public required string ConfigJson { get; set; }
+        public required string TemplateName { get; set; }
     }
 }

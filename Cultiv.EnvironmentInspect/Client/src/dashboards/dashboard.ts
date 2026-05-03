@@ -743,14 +743,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   }
 
   async applyConfiguration() {
-    const configSnippet = this.isUmbracoCloud ? this.umbracoCloudConfigTemplate : this.defaultConfigTemplate;
-    
     // Show Umbraco confirmation modal
     try {
       await umbConfirmModal(this, {
         headline: 'Apply Configuration',
         content: html`
           <p>This will update your <strong>appsettings.json</strong> file with the default redaction rules.</p>
+          <p><strong>Note:</strong> Comments will be preserved if possible, but may be removed if the operation encounters issues.</p>
           <p>Changes will take effect immediately thanks to hot reload.</p>
           <p>Do you want to continue?</p>
         `,
@@ -764,8 +763,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
     
     try {
+      // Send only the template name, not the full JSON (security)
+      const templateName = this.isUmbracoCloud ? 'umbracoCloud' : 'default';
       const { error } = await CultivEnvironmentInspectService.applyConfiguration({
-        body: { configJson: configSnippet }
+        body: { templateName }
       });
       
       if (error) {
