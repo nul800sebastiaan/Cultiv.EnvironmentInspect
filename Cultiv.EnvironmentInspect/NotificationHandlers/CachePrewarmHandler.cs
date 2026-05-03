@@ -1,9 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
-
+using Cultiv.EnvironmentInspect.Services;
+using Microsoft.Extensions.Logging;
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
-
-using Cultiv.EnvironmentInspect.Services;
 
 namespace Cultiv.EnvironmentInspect.NotificationHandlers
 {

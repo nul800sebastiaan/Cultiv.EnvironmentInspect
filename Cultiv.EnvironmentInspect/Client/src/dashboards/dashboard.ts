@@ -2,7 +2,7 @@ import { LitElement, css, html, customElement, property, repeat, when, state } f
 import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_NOTIFICATION_CONTEXT } from '@umbraco-cms/backoffice/notification';
 import { umbConfirmModal } from '@umbraco-cms/backoffice/modal';
-import { EnvironmentVariable, EnvironmentInspectResponse, UserPreferencesDto } from "../api/types.gen";
+import { EnvironmentVariable, EnvironmentInspectResponse, UserPreferencesDto, ConfigurationTemplatesDto } from "../api/types.gen";
 import { CultivEnvironmentInspectService } from "../api/sdk.gen";
 
 // Type for elements with checked property (like uui-toggle)
@@ -697,7 +697,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
   }
   
-  async getConfigurationTemplates(): Promise<{ data?: any }> {
+  async getConfigurationTemplates(): Promise<{ data?: ConfigurationTemplatesDto }> {
     try {
       return await CultivEnvironmentInspectService.getConfigurationTemplates();
     } catch (e) {

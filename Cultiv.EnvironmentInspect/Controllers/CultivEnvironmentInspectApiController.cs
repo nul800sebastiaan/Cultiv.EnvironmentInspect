@@ -1,11 +1,9 @@
 using Asp.Versioning;
+using Cultiv.EnvironmentInspect.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using Umbraco.Cms.Web.Common.Authorization;
 using Umbraco.Cms.Core.Security;
-
-using Cultiv.EnvironmentInspect.Services;
+using Umbraco.Cms.Web.Common.Authorization;
 
 namespace Cultiv.EnvironmentInspect.Controllers
 {

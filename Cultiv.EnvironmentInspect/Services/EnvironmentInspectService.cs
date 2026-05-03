@@ -1,15 +1,13 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Cultiv.EnvironmentInspect.Configuration;
+using Cultiv.EnvironmentInspect.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-
 using Umbraco.Cms.Core.Cache;
 using Umbraco.Cms.Core.Hosting;
-
-using Cultiv.EnvironmentInspect.Configuration;
-using Cultiv.EnvironmentInspect.Controllers;
 
 namespace Cultiv.EnvironmentInspect.Services;
 
@@ -707,14 +705,14 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
             // Read the existing appsettings.json
             var existingJson = await File.ReadAllTextAsync(appsettingsPath);
-            
+
             // Configure JSON options to allow comments and trailing commas
             var deserializeOptions = new JsonSerializerOptions
             {
                 ReadCommentHandling = JsonCommentHandling.Skip,
                 AllowTrailingCommas = true
             };
-            
+
             var existingConfig = JsonSerializer.Deserialize<JsonElement>(existingJson, deserializeOptions);
 
             // Parse the incoming config

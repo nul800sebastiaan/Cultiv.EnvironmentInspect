@@ -1,12 +1,10 @@
+using Cultiv.EnvironmentInspect.Data;
+using Microsoft.Data.SqlClient;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Microsoft.Data.Sqlite;
-using Microsoft.Data.SqlClient;
-
 using Umbraco.Cms.Core.Events;
 using Umbraco.Cms.Core.Notifications;
-
-using Cultiv.EnvironmentInspect.Data;
 
 namespace Cultiv.EnvironmentInspect.Migrations;
 

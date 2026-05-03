@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-
 using Cultiv.EnvironmentInspect.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace Cultiv.EnvironmentInspect.Services;
 
