@@ -526,11 +526,13 @@ jobs:
           if [[ -n "$LAST_NUGET_TAG" ]]; then
             echo "## What's Changed (since $LAST_NUGET_TAG)" >> release_body.md
             echo "" >> release_body.md
-            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" -F previous_tag_name="$LAST_NUGET_TAG" --jq .body >> release_body.md
+            # Get GitHub-generated notes and strip the "## What's Changed" header
+            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" -F previous_tag_name="$LAST_NUGET_TAG" --jq .body | sed '/^## What'"'"'s Changed$/d' >> release_body.md
           else
             echo "## What's Changed" >> release_body.md
             echo "" >> release_body.md
-            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" --jq .body >> release_body.md
+            # Get GitHub-generated notes and strip the "## What's Changed" header
+            gh api repos/${{ github.repository }}/releases/generate-notes -F tag_name="v${{ needs.setup.outputs.semver }}" --jq .body | sed '/^## What'"'"'s Changed$/d' >> release_body.md
           fi
         else
           # Not publishing to nuget.org - show alternative sources
@@ -568,7 +570,6 @@ jobs:
           @semantic-release/exec
           @semantic-release/commit-analyzer
           @semantic-release/release-notes-generator
-          @semantic-release/github
           conventional-changelog-conventionalcommits
 
     - name: Update GitHub Release with Custom Notes
