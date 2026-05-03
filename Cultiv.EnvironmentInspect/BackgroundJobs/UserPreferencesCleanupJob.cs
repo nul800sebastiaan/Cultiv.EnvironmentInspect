@@ -1,13 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
-
-using Umbraco.Cms.Core.Security;
-using Umbraco.Cms.Core.Scoping;
-using Umbraco.Cms.Infrastructure.BackgroundJobs;
-
 using Cultiv.EnvironmentInspect.Data;
 using Cultiv.EnvironmentInspect.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Umbraco.Cms.Core.Scoping;
+using Umbraco.Cms.Core.Security;
+using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
 namespace Cultiv.EnvironmentInspect.BackgroundJobs;
 

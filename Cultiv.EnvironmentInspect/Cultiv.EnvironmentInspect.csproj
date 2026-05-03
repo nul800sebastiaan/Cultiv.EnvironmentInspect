@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -18,19 +18,19 @@
   </PropertyGroup>
 
   <PropertyGroup>
-	  <Product>Cultiv.EnvironmentInspect</Product>
-	  <PackageId>Cultiv.EnvironmentInspect</PackageId>
-	  <Title>Cultiv Environment Variables Inspector</Title>
-	  <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
-	  <PackageTags>umbraco plugin package umbraco-marketplace</PackageTags>
-	  <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
-	  <Authors>Sebastiaan Janssen, Jeavon Leopold, Matthew Hart</Authors>
-	  <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
-	  <PackageLicenseFile>LICENSE</PackageLicenseFile>
-	  <PackageIcon>logo.png</PackageIcon>
-	  <PackageReadmeFile>README.md</PackageReadmeFile>
-	  <PackageVersion>$(PackageVersion)</PackageVersion>
-	  <Version>$(PackageVersion)</Version>
+    <Product>Cultiv.EnvironmentInspect</Product>
+    <PackageId>Cultiv.EnvironmentInspect</PackageId>
+    <Title>Cultiv Environment Variables Inspector</Title>
+    <Description>This installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.</Description>
+    <PackageTags>umbraco plugin package umbraco-marketplace</PackageTags>
+    <RootNamespace>Cultiv.EnvironmentInspect</RootNamespace>
+    <Authors>Sebastiaan Janssen, Jeavon Leopold, Matthew Hart</Authors>
+    <PackageProjectUrl>https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect</PackageProjectUrl>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageIcon>logo.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageVersion>$(PackageVersion)</PackageVersion>
+    <Version>$(PackageVersion)</Version>
     <InformationalVersion>$(PackageVersion)</InformationalVersion>
   </PropertyGroup>
 
@@ -57,11 +57,11 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\" />
-	  <None Include="../LICENSE" Pack="true" PackagePath="" />
-	  <None Include="../README.md" Pack="true" PackagePath="" />
-	  <None Include="../logo.png" Pack="true" PackagePath="" />
-	  <Content Include="buildTransitive\**" PackagePath="buildTransitive" />
-	  <Content Include="appsettings-schema.Cultiv.EnvironmentInspect.json" PackagePath="" />
+    <None Include="../LICENSE" Pack="true" PackagePath="" />
+    <None Include="../README.md" Pack="true" PackagePath="" />
+    <None Include="../logo.png" Pack="true" PackagePath="" />
+    <Content Include="buildTransitive\**" PackagePath="buildTransitive" />
+    <Content Include="appsettings-schema.Cultiv.EnvironmentInspect.json" PackagePath="" />
   </ItemGroup>
 
 </Project>

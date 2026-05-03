@@ -1,28 +1,25 @@
 using Asp.Versioning;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
-using Microsoft.OpenApi;
-using Microsoft.EntityFrameworkCore;
-
-using Swashbuckle.AspNetCore.SwaggerGen;
-
-using Umbraco.Cms.Core.Composing;
-using Umbraco.Cms.Core.DependencyInjection;
-using Umbraco.Cms.Api.Management.OpenApi;
-using Umbraco.Cms.Api.Common.OpenApi;
-using Umbraco.Cms.Core.Notifications;
-using Umbraco.Cms.Core.Configuration.Models;
-using Umbraco.Cms.Infrastructure.BackgroundJobs;
-
+using Cultiv.EnvironmentInspect.BackgroundJobs;
 using Cultiv.EnvironmentInspect.Configuration;
-using Cultiv.EnvironmentInspect.NotificationHandlers;
-using Cultiv.EnvironmentInspect.Services;
 using Cultiv.EnvironmentInspect.Data;
 using Cultiv.EnvironmentInspect.Migrations;
-using Cultiv.EnvironmentInspect.BackgroundJobs;
+using Cultiv.EnvironmentInspect.NotificationHandlers;
+using Cultiv.EnvironmentInspect.Services;
+using Microsoft.AspNetCore.Mvc.ApiExplorer;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.OpenApi;
+using Swashbuckle.AspNetCore.SwaggerGen;
+using Umbraco.Cms.Api.Common.OpenApi;
+using Umbraco.Cms.Api.Management.OpenApi;
+using Umbraco.Cms.Core.Composing;
+using Umbraco.Cms.Core.Configuration.Models;
+using Umbraco.Cms.Core.DependencyInjection;
+using Umbraco.Cms.Core.Notifications;
+using Umbraco.Cms.Infrastructure.BackgroundJobs;
 
 namespace Cultiv.EnvironmentInspect.Composers
 {

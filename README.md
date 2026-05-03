@@ -71,6 +71,7 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
 ```json
 {
   "EnvironmentInspect": {
+    "AzureWebAppAdvancedCopy": true,
     "Exclude": [
       "^APPSETTING_",
       "^AZURE_",
@@ -78,14 +79,6 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
       "^\\$schema$"
     ],
     "Redact": [
-      {
-        "Key": "Umbraco:CMS:Unattended:UnattendedUserPassword",
-        "RedactionMode": "Advanced",
-        "RedactionOptions": {
-          "KeepFirst": 2,
-          "KeepLast": 2
-        }
-      },
       {
         "Key": "ConnectionStrings:.*",
         "RedactionMode": "Advanced",
@@ -96,30 +89,37 @@ If you need to exclude or redact sensitive values, add the `EnvironmentInspect` 
         }
       },
       {
+        "Key": "Umbraco:Storage:AzureBlob:Media:ConnectionString",
+        "RedactionMode": "Advanced",
+        "RedactionOptions": {
+          "Keys": [ "AccountKey" ],
+          "KeepFirst": 2,
+          "KeepLast": 2
+        }
+      },
+      {
+        "Key": "^WEBSITE_.*_KEY$",
+        "RedactionMode": "Full"
+      },
+      {
         "Key": ".*Password$",
         "RedactionMode": "Full"
       },
       {
-        "Key": ".*Secret.*",
-        "RedactionMode": "Full"
-      },
-      {
-        "ProviderType": "AzureKeyVaultConfigurationProvider",
-        "RedactionMode": "Full"
+        "Key": ".*Secret(?!.*HeaderName).*",
+        "RedactionMode": "Partial"
       }
-    ],
-    "RedactionCharacter": "•",
-    "PartialVisibleChars": 4,
-    "AzureWebAppAdvancedCopy": false
+    ]
   }
 }
 ```
 
 **Results:**
-- `UnattendedUserPassword`: `12••••90` 🔐
 - Connection string password: `7R••••($` (extracted from connection string) 🔐
+- Azure Blob Storage AccountKey: `hG••••9k` (extracted from connection string) 🔐
+- Keys matching `^WEBSITE_.*_KEY$`: `••••••••` 🔒
 - Keys matching `.*Password$`: `••••••••` 🔒
-- Keys matching `.*Secret.*`: `••••••••` 🔒
+- Keys matching `.*Secret(?!.*HeaderName).*`: `S3cr••••XyZ` 👁️
 
 For detailed configuration options, see the [Configuration Guide](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONFIGURATION.md).
 

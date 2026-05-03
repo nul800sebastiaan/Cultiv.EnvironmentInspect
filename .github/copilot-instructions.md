@@ -377,8 +377,36 @@ catch (ArgumentException ex)
 
 This ensures the dashboard remains usable even if users provide invalid configuration.
 
+## Code Quality Verification (Required After Every Edit)
+
+**After making ANY code changes, you MUST run these checks and verify they pass before reporting completion:**
+
+### Backend Changes (C#)
+```bash
+dotnet format --verify-no-changes
+```
+✅ **Expected output**: Should complete with no errors (warnings about workspace loading are OK)  
+❌ **If it fails**: Run `dotnet format` to fix issues, then verify again
+
+### Frontend Changes (TypeScript/Client/)
+```bash
+cd Cultiv.EnvironmentInspect/Client
+npm run lint
+```
+✅ **Expected output**: Command completes with exit code 0, no warnings or errors  
+❌ **If it fails**: Fix the linting issues reported, then verify again
+
+### Both Backend and Frontend
+If you modified both C# and TypeScript files, run BOTH checks.
+
+**CRITICAL**: Do not claim a fix is complete or CI will pass until you have:
+1. Run the appropriate verification command(s)
+2. Confirmed the command output shows success (exit code 0, no errors)
+3. Reported the verification results to the user
+
 ## Anti-Patterns to Avoid
 
+❌ **Don't** claim code is fixed without running and verifying `dotnet format --verify-no-changes` and/or `npm run lint`  
 ❌ **Don't** commit code that fails `dotnet format`  
 ❌ **Don't** use real credentials or organization names in examples  
 ❌ **Don't** add features without updating `CONFIGURATION.md`  
