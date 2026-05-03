@@ -27,14 +27,22 @@ indent_size = 2
 # JSON files
 [*.json]
 indent_size = 2
+end_of_line = lf
 
 # YAML files
 [*.{yml,yaml}]
 indent_size = 2
+end_of_line = lf
 
 # Markdown files
 [*.md]
 trim_trailing_whitespace = false
+end_of_line = lf
+
+# JavaScript and TypeScript files
+[*.{js,ts,jsx,tsx}]
+indent_size = 2
+end_of_line = lf
 
 # Shell scripts
 [*.sh]
