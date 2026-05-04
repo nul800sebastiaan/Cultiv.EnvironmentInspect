@@ -673,7 +673,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           this.onlyStarred = (prefsData.data.uiSettings.onlyStarred ?? false) && this.starredSettings.size > 0;
           this.replaceColonWithUnderscore = prefsData.data.uiSettings.replaceColonWithUnderscore ?? false;
           this.showAzureColumn = prefsData.data.uiSettings.showAzureColumn ?? false;
-          this.dismissInfoPanel = prefsData.data.uiSettings.dismissInfoPanel ?? false;
+          // Use the initial value (based on hasRedactions) if no saved preference exists
+          this.dismissInfoPanel = prefsData.data.uiSettings.dismissInfoPanel ?? this.dismissInfoPanel;
         }
       }
     } catch (e) {
