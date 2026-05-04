@@ -21,5 +21,6 @@ public class UISettingsDto
     public bool OnlyStarred { get; set; } = false;
     public bool ReplaceColonWithUnderscore { get; set; } = false;
     public bool ShowAzureColumn { get; set; } = false;
-    public bool DismissInfoPanel { get; set; } = false;
+    // Nullable: null = no saved preference, use smart default based on hasRedactions
+    public bool? DismissInfoPanel { get; set; } = null;
 }
