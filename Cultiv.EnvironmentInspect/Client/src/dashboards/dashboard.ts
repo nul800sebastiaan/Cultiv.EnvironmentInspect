@@ -368,6 +368,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   <div class="settings-header">Display Settings</div>
                   <div class="toggle-item">
                     <uui-toggle
+                      label="Environment variable format"
                       ?checked=${this.replaceColonWithUnderscore}
                       @change=${(e: CustomEvent) => {
                         this.replaceColonWithUnderscore = (e.target as CheckableElement).checked;
@@ -381,6 +382,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                   ${when(this.azureWebAppAdvancedCopy, () => html`
                     <div class="toggle-item">
                       <uui-toggle
+                        label="Enable Azure-ready JSON snippets"
                         ?checked=${this.showAzureColumn}
                         @change=${(e: CustomEvent) => {
                           this.showAzureColumn = (e.target as CheckableElement).checked;
@@ -398,6 +400,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
             <div class="filters-section">
               <div class="toggle-item">
                 <uui-toggle
+                  label="Exclude empty values"
                   ?checked=${this.excludeEmptyValues}
                   @change=${(e: CustomEvent) => {
                     this.excludeEmptyValues = (e.target as CheckableElement).checked;
@@ -410,6 +413,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
               </div>
               <div class="toggle-item">
                 <uui-toggle
+                  label="Redacted"
                   ?checked=${this.onlyRedacted}
                   ?disabled=${!this.hasAnyRedactions}
                   title=${this.hasAnyRedactions ? '' : 'No redacted values available'}
@@ -424,6 +428,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
               </div>
               <div class="toggle-item">
                 <uui-toggle
+                  label="Starred"
                   ?checked=${this.onlyStarred}
                   ?disabled=${!this.hasAnyStarred}
                   title=${this.hasAnyStarred ? '' : 'No starred settings available'}
@@ -439,6 +444,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
             </div>
             <div class="search-section">
               <uui-input
+                label="Filter settings"
                 placeholder="Type to filter..."
                 .value=${this.filterText}
                 @input=${(e: InputEvent) => {
@@ -674,7 +680,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           this.replaceColonWithUnderscore = prefsData.data.uiSettings.replaceColonWithUnderscore ?? false;
           this.showAzureColumn = prefsData.data.uiSettings.showAzureColumn ?? false;
           // Use the initial value (based on hasRedactions) if no saved preference exists
-          this.dismissInfoPanel = prefsData.data.uiSettings.dismissInfoPanel ?? this.dismissInfoPanel;
+          const savedDismiss = prefsData.data.uiSettings.dismissInfoPanel;
+          this.dismissInfoPanel = savedDismiss ?? this.dismissInfoPanel;
         }
       }
     } catch (e) {
@@ -726,12 +733,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
   dismissInfo = async () => {
     this.dismissInfoPanel = true;
+    // Save the preference so it stays dismissed
     await this.saveUISettings();
   }
 
-  showInfo = async () => {
+  showInfo = () => {
+    // Just show it, don't save preference - let smart logic work next time
     this.dismissInfoPanel = false;
-    await this.saveUISettings();
   }
 
   get shouldShowInfoPanel(): boolean {

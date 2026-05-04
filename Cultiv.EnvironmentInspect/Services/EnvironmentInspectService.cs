@@ -970,13 +970,31 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
         // Indent the new JSON
         var indentedJson = IndentJson(newSectionJson, indentation);
-        var insertion = $"{(needsComma ? "," : "")}\n{indentation}\"{sectionName}\": {indentedJson}";
-        _logger.LogDebug("Insertion text length: {Length} characters", insertion.Length);
 
-        var result = jsonText.Insert(lastBraceIndex, insertion + "\n");
-        _logger.LogDebug("Insert completed, result length: {Length} characters", result.Length);
+        string insertion;
+        if (needsComma)
+        {
+            // Find the position right after the last non-whitespace character (before the final brace)
+            var insertPos = beforeClosing.Length; // This is right after the last meaningful character
 
-        return result;
+            // Insert comma and the new section (no trailing newline - file already has proper formatting)
+            insertion = $",\n{indentation}\"{sectionName}\": {indentedJson}";
+            _logger.LogDebug("Insertion text (with comma) length: {Length} characters", insertion.Length);
+
+            var result = jsonText.Insert(insertPos, insertion);
+            _logger.LogDebug("Insert completed, result length: {Length} characters", result.Length);
+            return result;
+        }
+        else
+        {
+            // Just insert the new section (no trailing newline - file already has proper formatting)
+            insertion = $"\n{indentation}\"{sectionName}\": {indentedJson}";
+            _logger.LogDebug("Insertion text length: {Length} characters", insertion.Length);
+
+            var result = jsonText.Insert(lastBraceIndex, insertion);
+            _logger.LogDebug("Insert completed, result length: {Length} characters", result.Length);
+            return result;
+        }
     }
 
     private string IndentJson(string json, string indentation)

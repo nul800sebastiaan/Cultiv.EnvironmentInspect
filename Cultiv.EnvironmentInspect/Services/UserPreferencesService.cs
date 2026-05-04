@@ -50,6 +50,7 @@ internal class UserPreferencesService : IUserPreferencesService
                         uiSettings.ShowAzureColumn = boolValue;
                         break;
                     case "_ui_dismissInfoPanel":
+                        // Assign nullable bool - null means no preference saved
                         uiSettings.DismissInfoPanel = boolValue;
                         break;
                 }
@@ -152,7 +153,7 @@ internal class UserPreferencesService : IUserPreferencesService
             { "_ui_onlyStarred", uiSettings.OnlyStarred },
             { "_ui_replaceColonWithUnderscore", uiSettings.ReplaceColonWithUnderscore },
             { "_ui_showAzureColumn", uiSettings.ShowAzureColumn },
-            { "_ui_dismissInfoPanel", uiSettings.DismissInfoPanel }
+            { "_ui_dismissInfoPanel", uiSettings.DismissInfoPanel ?? false }
         };
 
         foreach (var (key, value) in settingsMap)
