@@ -95,7 +95,6 @@ jobs:
             @semantic-release/exec
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
-            @semantic-release/github
             conventional-changelog-conventionalcommits
 
       - name: Check Release
@@ -561,6 +560,7 @@ jobs:
         fi
 
     - name: Semantic Release
+      id: semantic
       uses: cycjimmy/semantic-release-action@v6
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -573,7 +573,7 @@ jobs:
           conventional-changelog-conventionalcommits
 
     - name: Update GitHub Release with Custom Notes
-      if: ${{ github.event.inputs.create_github_release != 'false' }}
+      if: ${{ steps.semantic.outputs.new_release_published == 'true' && github.event.inputs.create_github_release != 'false' }}
       uses: softprops/action-gh-release@v3
       with:
         tag_name: v${{ needs.setup.outputs.semver }}
