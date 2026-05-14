@@ -3,7 +3,7 @@ import { UmbElementMixin } from "@umbraco-cms/backoffice/element-api";
 import { UMB_NOTIFICATION_CONTEXT } from '@umbraco-cms/backoffice/notification';
 import { umbConfirmModal } from '@umbraco-cms/backoffice/modal';
 import { EnvironmentVariable, EnvironmentInspectResponse, UserPreferencesDto, ConfigurationTemplatesDto } from "../api/types.gen";
-import { CultivEnvironmentInspectService } from "../api/sdk.gen";
+import { applyConfiguration, getConfigurationTemplates, getEnvironment, getUserPreferences, saveUiSettings, toggleStar } from "../api/sdk.gen";
 
 // Type for elements with checked property (like uui-toggle)
 interface CheckableElement extends HTMLElement {
@@ -22,7 +22,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
   @state() showAzureColumn: boolean = false; // User preference to show/hide Azure column
-  @state() settingsPopoverOpen: boolean = false;
+
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
@@ -95,7 +95,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     this.togglingStar.add(key);
     
     try {
-      const { error } = await CultivEnvironmentInspectService.toggleStar({
+      const { error } = await toggleStar({
         body: { settingKey: key }
       });
       
@@ -224,10 +224,6 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
   }
 
-  closeSettingsPopover() {
-    this.settingsPopoverOpen = false;
-  }
-
   renderInfoPanel() {
     // If redactions are already configured, show simplified help panel
     if (this.hasRedactions) {
@@ -350,21 +346,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         () => html`
           <div class="filter-container">
             <div class="settings-section">
-              <uui-popover 
-                id="settings-popover" 
-                ?open=${this.settingsPopoverOpen} 
-                placement="bottom-start"
-                @close=${() => this.closeSettingsPopover()}>
-                <uui-button
-                  slot="trigger"
-                  look="outline"
-                  label="Settings"
-                  compact
-                  title="Display settings"
-                  @click=${() => this.settingsPopoverOpen = !this.settingsPopoverOpen}>
-                  ⚙️
-                </uui-button>
-                <div slot="popover" class="settings-popover-content" @click=${(e: Event) => e.stopPropagation()}>
+              <uui-button
+                look="outline"
+                label="Settings"
+                compact
+                title="Display settings"
+                popovertarget="settings-popover">
+                ⚙️
+              </uui-button>
+              <uui-popover-container id="settings-popover" placement="bottom-start">
+                <div class="settings-popover-content">
                   <div class="settings-header">Display Settings</div>
                   <div class="toggle-item">
                     <uui-toggle
@@ -395,7 +386,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                     </div>
                   `)}
                 </div>
-              </uui-popover>
+              </uui-popover-container>
             </div>
             <div class="filters-section">
               <div class="toggle-item">
@@ -693,12 +684,12 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   }
 
   async getData(): Promise<{ data?: EnvironmentInspectResponse }> {
-    return CultivEnvironmentInspectService.getEnvironment();
+    return getEnvironment();
   }
   
   async getUserPreferences(): Promise<{ data?: UserPreferencesDto }> {
     try {
-      return await CultivEnvironmentInspectService.getUserPreferences();
+      return await getUserPreferences();
     } catch (e) {
       console.error("Failed to load user preferences", e);
       return { data: { starredSettings: [], uiSettings: { excludeEmptyValues: true, onlyRedacted: false, onlyStarred: false, replaceColonWithUnderscore: false, showAzureColumn: false, dismissInfoPanel: false } } };
@@ -707,7 +698,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   
   async getConfigurationTemplates(): Promise<{ data?: ConfigurationTemplatesDto }> {
     try {
-      return await CultivEnvironmentInspectService.getConfigurationTemplates();
+      return await getConfigurationTemplates();
     } catch (e) {
       console.error("Failed to load configuration templates", e);
       return { data: { defaultTemplate: '', umbracoCloudTemplate: '' } };
@@ -716,7 +707,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   
   async saveUISettings() {
     try {
-      await CultivEnvironmentInspectService.saveUiSettings({
+      await saveUiSettings({
         body: {
           excludeEmptyValues: this.excludeEmptyValues,
           onlyRedacted: this.onlyRedacted,
@@ -774,7 +765,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     try {
       // Send only the template name, not the full JSON (security)
       const templateName = this.isUmbracoCloud ? 'umbracoCloud' : 'default';
-      const { error } = await CultivEnvironmentInspectService.applyConfiguration({
+      const { error } = await applyConfiguration({
         body: { templateName }
       });
       
@@ -873,6 +864,10 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
 
       .search-section uui-icon {
         margin-left: 0.25rem;
+      }
+
+      .help-button-wrapper uui-icon {
+        margin-left: 0;
       }
 
       @media (max-width: 1200px) {

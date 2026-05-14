@@ -1,12 +1,12 @@
 {
   "branches": [
-    "release/v2",
+    "release/v3",
     {
-      "name": "beta/v2",
+      "name": "beta/v3",
       "prerelease": "beta"
     },
     {
-      "name": "develop/v2",
+      "name": "develop/v3",
       "prerelease": "alpha"
     }
   ],

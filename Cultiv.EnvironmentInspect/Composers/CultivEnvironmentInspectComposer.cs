@@ -1,18 +1,16 @@
-using Asp.Versioning;
 using Cultiv.EnvironmentInspect.BackgroundJobs;
 using Cultiv.EnvironmentInspect.Configuration;
 using Cultiv.EnvironmentInspect.Data;
 using Cultiv.EnvironmentInspect.Migrations;
 using Cultiv.EnvironmentInspect.NotificationHandlers;
 using Cultiv.EnvironmentInspect.Services;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using Umbraco.Cms.Api.Common.OpenApi;
 using Umbraco.Cms.Api.Management.OpenApi;
 using Umbraco.Cms.Core.Composing;
@@ -97,9 +95,6 @@ namespace Cultiv.EnvironmentInspect.Composers
                     warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
 
-            // Register operation ID handler for Swagger
-            builder.Services.AddSingleton<IOperationIdHandler, CustomOperationHandler>();
-
             // Pre-warm the cache on application startup
             builder.AddNotificationAsyncHandler<UmbracoApplicationStartedNotification, CachePrewarmHandler>();
 
@@ -109,55 +104,36 @@ namespace Cultiv.EnvironmentInspect.Composers
             // Register weekly cleanup job for orphaned user preferences (distributed - runs on one server only)
             builder.Services.AddSingleton<IDistributedBackgroundJob, UserPreferencesCleanupJob>();
 
-            builder.Services.Configure<SwaggerGenOptions>(opt =>
-            {
-                // Related documentation:
-                // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api
-                // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api/adding-a-custom-swagger-document
-                // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api/versioning-your-api
-                // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api/access-policies
+            // Register the OpenAPI document for this package
+            builder.AddBackOfficeOpenApiDocument(
+                Constants.ApiName,
+                document => document
+                    .WithTitle("Cultiv Environment Inspect Backoffice API")
+                    .WithBackOfficeAuthentication()
+                    .ConfigureOpenApiOptions(options =>
+                    {
+                        options.AddOperationTransformer<CustomOperationIdTransformer>();
+                    }));
+        }
 
-                // Configure the Swagger generation options
-                // Add in a new Swagger API document solely for our own package that can be browsed via Swagger UI
-                // Along with having a generated swagger JSON file that we can use to auto generate a TypeScript client
-                opt.SwaggerDoc(Constants.ApiName, new OpenApiInfo
+        // Generates concise operation IDs (just the action name) for our controllers
+        private sealed class CustomOperationIdTransformer : IOpenApiOperationTransformer
+        {
+            public Task TransformAsync(
+                OpenApiOperation operation,
+                OpenApiOperationTransformerContext context,
+                CancellationToken cancellationToken)
+            {
+                if (context.Description.ActionDescriptor is ControllerActionDescriptor controllerActionDescriptor &&
+                    controllerActionDescriptor.ControllerTypeInfo.Namespace?.StartsWith(
+                        "Cultiv.EnvironmentInspect.Controllers",
+                        StringComparison.InvariantCultureIgnoreCase) is true)
                 {
-                    Title = "Cultiv Environment Inspect Backoffice API",
-                    Version = "1.0",
-                    // Contact = new OpenApiContact
-                    // {
-                    //     Name = "Some Developer",
-                    //     Email = "you@company.com",
-                    //     Url = new Uri("https://company.com")
-                    // }
-                });
+                    operation.OperationId = $"{context.Description.ActionDescriptor.RouteValues["action"]}";
+                }
 
-                // Enable Umbraco authentication for the "Example" Swagger document
-                // PR: https://github.com/umbraco/Umbraco-CMS/pull/15699
-                opt.OperationFilter<CultivEnvironmentInspectOperationSecurityFilter>();
-            });
-        }
-
-        public class CultivEnvironmentInspectOperationSecurityFilter : BackOfficeSecurityRequirementsOperationFilterBase
-        {
-            protected override string ApiName => Constants.ApiName;
-        }
-
-        // This is used to generate nice operation IDs in our swagger json file
-        // So that the gnerated TypeScript client has nice method names and not too verbose
-        // https://docs.umbraco.com/umbraco-cms/tutorials/creating-a-backoffice-api/umbraco-schema-and-operation-ids#operation-ids
-        public class CustomOperationHandler : OperationIdHandler
-        {
-            public CustomOperationHandler(IOptions<ApiVersioningOptions> apiVersioningOptions) : base(apiVersioningOptions)
-            {
+                return Task.CompletedTask;
             }
-
-            protected override bool CanHandle(ApiDescription apiDescription, ControllerActionDescriptor controllerActionDescriptor)
-            {
-                return controllerActionDescriptor.ControllerTypeInfo.Namespace?.StartsWith("Cultiv.EnvironmentInspect.Controllers", comparisonType: StringComparison.InvariantCultureIgnoreCase) is true;
-            }
-
-            public override string Handle(ApiDescription apiDescription) => $"{apiDescription.ActionDescriptor.RouteValues["action"]}";
         }
     }
 }
