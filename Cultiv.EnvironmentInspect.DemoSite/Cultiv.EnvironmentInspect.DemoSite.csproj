@@ -7,9 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Umbraco.Cms" Version="18.0.0-rc1" />
+    <PackageReference Include="Umbraco.Cms" Version="18.0.0-rc2" />
     <PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="72.1.0.3" />
-    <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="18.0.0-rc1" />
+    <PackageReference Include="Umbraco.Cms.DevelopmentMode.Backoffice" Version="18.0.0-rc2" />
   </ItemGroup>
 
   <ItemGroup>
