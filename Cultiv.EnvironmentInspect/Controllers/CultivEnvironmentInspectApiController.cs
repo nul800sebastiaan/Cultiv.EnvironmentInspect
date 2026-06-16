@@ -127,6 +127,7 @@ namespace Cultiv.EnvironmentInspect.Controllers
         public List<EnvironmentVariable> Variables { get; set; } = new();
         public bool AzureWebAppAdvancedCopy { get; set; }
         public bool HasRedactions { get; set; }
+        public bool HasRedactionRules { get; set; }
         public bool IsLocal { get; set; }
         public bool IsUmbracoCloud { get; set; }
     }
