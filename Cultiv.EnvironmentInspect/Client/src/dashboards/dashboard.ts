@@ -26,7 +26,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
-  @state() hasRedactions: boolean = false; // Set from server
+  @state() hasRedactions: boolean = false; // Set from server - true if any variables were actually redacted
+  @state() hasRedactionRules: boolean = false; // Set from server - true if redaction rules are configured
   @state() isLocal: boolean = false; // Set from server
   @state() isUmbracoCloud: boolean = false; // Set from server
   @state() dismissInfoPanel: boolean = false; // User preference to dismiss info panel
@@ -229,8 +230,8 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   }
 
   renderInfoPanel() {
-    // If redactions are already configured, show simplified help panel
-    if (this.hasRedactions) {
+    // If redaction rules are already configured, show simplified help panel
+    if (this.hasRedactionRules) {
       return html`
         <uui-box class="info-panel info-panel-success" headline="✅ Redactions are Configured">
           <uui-button
@@ -262,11 +263,11 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     let message = '';
     let showApplyButton = false;
 
-    if (this.isLocal && this.isUmbracoCloud) {
+    if (this.isLocal && this.isUmbracoCloud && !this.hasRedactionRules) {
       title = '🔧 Configure Redactions for Umbraco Cloud';
       message = 'Add default Umbraco Cloud redaction rules to protect sensitive configuration values.';
       showApplyButton = true;
-    } else if (this.isLocal && !this.isUmbracoCloud) {
+    } else if (this.isLocal && !this.isUmbracoCloud && !this.hasRedactionRules) {
       title = '🔧 Configure Redactions';
       message = 'Add default redaction rules to protect sensitive configuration values like passwords and connection strings.';
       showApplyButton = true;
@@ -468,11 +469,11 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                     compact
                     look="outline"
                     label="Show help"
-                    title="${!this.hasRedactions ? 'No redactions configured - click for setup help' : 'Show configuration help panel'}"
+                    title="${!this.hasRedactionRules ? 'No redactions configured - click for setup help' : 'Show configuration help panel'}"
                     @click=${this.showInfo}>
                     <uui-icon name="icon-help-alt"></uui-icon>
                   </uui-button>
-                  ${when(!this.hasRedactions, () => html`
+                  ${when(!this.hasRedactionRules, () => html`
                     <uui-icon class="warning-indicator" name="icon-alert"></uui-icon>
                   `)}
                 </div>
@@ -652,6 +653,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         this.environmentVariables = envData.data.variables || [];
         this.azureWebAppAdvancedCopy = envData.data.azureWebAppAdvancedCopy || false;
         this.hasRedactions = envData.data.hasRedactions || false;
+        this.hasRedactionRules = envData.data.hasRedactionRules || false;
         this.isLocal = envData.data.isLocal || false;
         this.isUmbracoCloud = envData.data.isUmbracoCloud || false;
         
@@ -659,7 +661,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         // If redactions are configured, hide panel by default (user already configured)
         // If no redactions, show panel by default (help user get started)
         // This will be overridden by saved preference below if one exists
-        this.dismissInfoPanel = this.hasRedactions;
+        this.dismissInfoPanel = this.hasRedactionRules;
       }
       
       if (templatesData.data) {
@@ -803,6 +805,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       if (envData.data) {
         this.environmentVariables = envData.data.variables || [];
         this.hasRedactions = envData.data.hasRedactions || false;
+        this.hasRedactionRules = envData.data.hasRedactionRules || false;
         this.azureWebAppAdvancedCopy = envData.data.azureWebAppAdvancedCopy || false;
       }
       
