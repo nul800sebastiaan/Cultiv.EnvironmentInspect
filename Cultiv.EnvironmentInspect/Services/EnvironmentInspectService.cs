@@ -83,6 +83,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
         // Detect environment
         var hasRedactions = variables.Any(v => !string.IsNullOrEmpty(v.RedactedMode));
+        var hasRedactionRules = _options.CurrentValue.Redact.Count > 0;
         var isUmbracoCloud = DetectUmbracoCloud();
         var isLocal = DetectIsLocal(isUmbracoCloud);
 
@@ -91,6 +92,7 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
             Variables = variables,
             AzureWebAppAdvancedCopy = _options.CurrentValue.AzureWebAppAdvancedCopy,
             HasRedactions = hasRedactions,
+            HasRedactionRules = hasRedactionRules,
             IsLocal = isLocal,
             IsUmbracoCloud = isUmbracoCloud
         };

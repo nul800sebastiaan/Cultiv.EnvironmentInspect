@@ -1,7 +1,8 @@
 # Cultiv.EnvironmentInspect &middot; [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![NuGet version (Cultiv.EnvironmentInspect)](https://img.shields.io/nuget/v/Cultiv.EnvironmentInspect.svg)](https://www.nuget.org/packages/Cultiv.EnvironmentInspect/) [![CI](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/actions/workflows/ci.yml/badge.svg)](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/actions)
 
 **v1 is for Umbraco v9 to v13**  
-**v2 is for Umbraco v17+**
+**v2 is for Umbraco v17**  
+**v3 is for Umbraco v18+**
 
 Cultiv Environment Inspector installs a dashboard in the Settings section of Umbraco, showing you the currently applied environment values and where they are coming from.
 

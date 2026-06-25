@@ -8,7 +8,7 @@
       "name": "Cultiv Environment Inspect Bundle",
       "alias": "Cultiv.EnvironmentInspect.Bundle",
       "type": "bundle",
-      "js": "/App_Plugins/CultivEnvironmentInspect/cultiv-environment-inspect.js"
+      "js": "/App_Plugins/CultivEnvironmentInspect/cultiv-environment-inspect.js?v=%CACHE_BUSTER%"
     }
   ]
 }

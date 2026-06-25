@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <StaticWebAssetBasePath>/</StaticWebAssetBasePath>
-    <NoWarn>$(NoWarn);NU5118</NoWarn>
+    <NoWarn>$(NoWarn);NU5118;NU1902;NU1903</NoWarn>
     
     <!-- Symbol file configuration -->
     <DebugType>portable</DebugType>
@@ -41,8 +41,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.103" PrivateAssets="All" />
-    <PackageReference Include="Umbraco.Cms.Api.Management" Version="18.0.0-beta2" />
-    <PackageReference Include="Umbraco.Cms.Persistence.EFCore" Version="18.0.0-beta2" />
+    <PackageReference Include="Umbraco.Cms.Api.Management" Version="18.0.0" />
+    <PackageReference Include="Umbraco.Cms.Persistence.EFCore" Version="18.0.0" />
   </ItemGroup>
 
   <ItemGroup>
