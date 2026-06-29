@@ -219,7 +219,7 @@ jobs:
     - name: Check for Migration Errors
       shell: pwsh
       run: |
-        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+        & '.github/scripts/Check-MigrationErrors.ps1' -LogPath "app.log"
          
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
@@ -370,7 +370,7 @@ jobs:
     - name: Check for Migration Errors
       shell: pwsh
       run: |
-        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+        & '.github/scripts/Check-MigrationErrors.ps1' -LogPath "app.log"
     
     - name: Upload Logs on Failure
       if: failure()
