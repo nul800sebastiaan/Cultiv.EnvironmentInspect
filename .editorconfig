@@ -27,6 +27,7 @@ indent_size = 2
 # JSON files
 [*.json]
 indent_size = 2
+indent_style = space
 end_of_line = lf
 
 # YAML files
@@ -42,6 +43,12 @@ end_of_line = lf
 # JavaScript and TypeScript files
 [*.{js,ts,jsx,tsx}]
 indent_size = 2
+end_of_line = lf
+
+# Razor view files
+[*.cshtml]
+indent_size = 4
+indent_style = space
 end_of_line = lf
 
 # Shell scripts
