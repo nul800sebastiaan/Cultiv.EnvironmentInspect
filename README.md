@@ -144,34 +144,7 @@ For Umbraco Cloud deployments, see the [Umbraco Cloud configuration example](htt
 
 ## Contributing
 
-### Branch structure
-
-This repo supports two Umbraco CMS majors from parallel branch lines:
-
-- `develop/v2` / `release/v2` — targets Umbraco CMS 17. **All new feature and bugfix development happens here.**
-- `develop/v3` / `release/v3` — targets Umbraco CMS 18. This line is merge-only — never branch a feature or hotfix directly off it; changes only arrive there via `git merge develop/v2` (never `git cherry-pick`, so the same change doesn't get re-flagged as a conflict on every later merge).
-
-### Working on both branches: use a git worktree
-
-Switching between `develop/v2` and `develop/v3` with a plain `git checkout` in one working copy leaves stale artifacts behind: `node_modules` installed against the wrong `@umbraco-cms/backoffice` version, `bin`/`obj` build output from the other major, and a local runtime database migrated by the wrong Umbraco major (which then refuses to boot at all). A [git worktree](https://git-scm.com/docs/git-worktree) avoids this entirely — it gives `develop/v3` its own working directory and build artifacts while still sharing the same repository history as your existing clone, so nothing needs re-downloading.
-
-Run this from inside your existing clone (with `develop/v2` checked out):
-
-```bash
-# <path> can be any folder of your choosing that doesn't already exist - a sibling directory
-# next to your existing clone is the usual convention, e.g. ../Cultiv.EnvironmentInspect-v3
-git worktree add <path> develop/v3
-```
-
-`cd` into `<path>` to work on `develop/v3` from then on — its own `npm install`, `dotnet build`, and local database stay completely independent of your `develop/v2` working copy, so you can have both branches built and running at the same time without either interfering with the other.
-
-Useful commands:
-```bash
-git worktree list           # see every worktree and which branch it has checked out
-git worktree remove <path>  # remove one you no longer need (must be clean - commit or stash first)
-```
-
-See `.github/copilot-instructions.md`'s "Two Umbraco majors, one repo" section for the full merge workflow, including which files are deliberately kept different between the two branches.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, branching strategy (including working across the v2/v3 Umbraco 17/18 branch lines with a git worktree), and the release process.
 
 ## License
 
