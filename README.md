@@ -144,8 +144,8 @@ For Umbraco Cloud deployments, see the [Umbraco Cloud configuration example](htt
 
 ## Contributing
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, coding standards, branching strategy (including working across the v2/v3 Umbraco 17/18 branch lines with a git worktree), and the release process.
+Contributions are welcome! See [CONTRIBUTING.md](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONTRIBUTING.md) for development setup, coding standards, branching strategy (including working across the v2/v3 Umbraco 17/18 branch lines with a git worktree), and the release process.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/LICENSE) file for details.
