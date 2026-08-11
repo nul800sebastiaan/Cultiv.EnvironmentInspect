@@ -22,7 +22,6 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
   @state() showAzureColumn: boolean = false; // User preference to show/hide Azure column
-
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
@@ -348,11 +347,11 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
           <div class="filter-container">
             <div class="settings-section">
               <uui-button
+                popovertarget="settings-popover"
                 look="outline"
                 label="Settings"
                 compact
-                title="Display settings"
-                popovertarget="settings-popover">
+                title="Display settings">
                 ⚙️
               </uui-button>
               <uui-popover-container id="settings-popover" placement="bottom-start">
@@ -1021,6 +1020,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       .help-button-wrapper {
         position: relative;
         display: inline-block;
+      }
+
+      .help-button-wrapper uui-button {
+        /* At the inherited 14px font-size, uui-button's internal centering math
+           for a lone icon (no text) renders it a few px off-center. Umbraco's own
+           icon-only header buttons avoid this by running at 18px; match that. */
+        font-size: 18px;
       }
 
       .help-button-wrapper .warning-indicator {

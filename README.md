@@ -142,6 +142,10 @@ For Umbraco Cloud deployments, see the [Umbraco Cloud configuration example](htt
 2. **Test regex patterns**: Use [regex101.com](https://regex101.com/) to validate your patterns
 3. **Use Advanced mode for connection strings**: Extract and redact only the sensitive parts
 
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/CONTRIBUTING.md) for development setup, coding standards, branching strategy (including working across the v2/v3 Umbraco 17/18 branch lines with a git worktree), and the release process.
+
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](https://github.com/nul800sebastiaan/Cultiv.EnvironmentInspect/blob/develop/v2/LICENSE) file for details.
