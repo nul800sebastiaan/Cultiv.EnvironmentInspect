@@ -109,7 +109,15 @@ public class EnvironmentInspectService : IEnvironmentInspectService, IDisposable
 
         // Check if configured for Umbraco Cloud (locally) - has Environment ID
         var cloudEnvironmentId = _configuration.GetValue<string>("Umbraco:Cloud:Identity:EnvironmentId");
-        return !string.IsNullOrEmpty(cloudEnvironmentId);
+        if (!string.IsNullOrEmpty(cloudEnvironmentId))
+        {
+            return true;
+        }
+
+        // Fallback: check for presence of umbraco-cloud.json (the Umbraco Cloud package registers
+        // config via a composer, so config values may not be available depending on registration order)
+        var umbracoCloudJsonPath = Path.Combine(_hostingEnvironment.ApplicationPhysicalPath, "umbraco-cloud.json");
+        return File.Exists(umbracoCloudJsonPath);
     }
 
     private bool DetectIsLocal(bool isUmbracoCloud)

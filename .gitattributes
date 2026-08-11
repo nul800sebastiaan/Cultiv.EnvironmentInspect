@@ -29,6 +29,17 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 
+# These files are supposed to always differ between the v2 (Umbraco 17) and v3 (Umbraco 18)
+# branch pairs - never merge their content, always keep the local branch's version. Requires
+# `git config merge.ours.driver true` once per clone/worktree (see .github/copilot-instructions.md).
+/.releaserc merge=ours
+/Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj merge=ours
+/Cultiv.EnvironmentInspect.DemoSite/Cultiv.EnvironmentInspect.DemoSite.csproj merge=ours
+/Cultiv.EnvironmentInspect/Composers/CultivEnvironmentInspectComposer.cs merge=ours
+/Cultiv.EnvironmentInspect/Client/package.json merge=ours
+/Cultiv.EnvironmentInspect/Client/package-lock.json merge=ours
+/Cultiv.EnvironmentInspect/Client/scripts/generate-openapi.js merge=ours
+
 # Denote all files that are truly binary and should not be modified.
 *.png binary
 *.jpg binary

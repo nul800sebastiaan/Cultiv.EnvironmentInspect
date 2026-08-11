@@ -11,12 +11,17 @@ env:
 
 on:
   push:
-    branches: 
+    branches:
       - "develop/v2"
       - "release/v2"
       - "beta/v2"
       - "feature/v2/**"
       - "hotfix/v2/**"
+      - "develop/v3"
+      - "release/v3"
+      - "beta/v3"
+      - "feature/v3/**"
+      - "hotfix/v3/**"
   pull_request:
     branches:
       - develop/v2
@@ -24,6 +29,11 @@ on:
       - beta/v2
       - feature/v2/**
       - hotfix/v2/**
+      - develop/v3
+      - release/v3
+      - beta/v3
+      - feature/v3/**
+      - hotfix/v3/**
   workflow_dispatch:
 
 jobs:
@@ -246,7 +256,7 @@ jobs:
     - name: Check for Migration Errors
       shell: pwsh
       run: |
-        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+        & '.github/scripts/Check-MigrationErrors.ps1' -LogPath "app.log"
          
     - name: Build Client
       working-directory: ${{ env.PATH_TO_EXTENSION }}
@@ -407,7 +417,7 @@ jobs:
     - name: Check for Migration Errors
       shell: pwsh
       run: |
-        pwsh .github/scripts/Check-MigrationErrors.ps1 -LogPath "app.log"
+        & '.github/scripts/Check-MigrationErrors.ps1' -LogPath "app.log"
     
     - name: Upload Logs on Failure
       if: failure()

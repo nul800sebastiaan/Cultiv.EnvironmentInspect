@@ -22,7 +22,6 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
   @state() replaceColonWithUnderscore: boolean = false;
   @state() azureWebAppAdvancedCopy: boolean = false; // Set from server
   @state() showAzureColumn: boolean = false; // User preference to show/hide Azure column
-  @state() settingsPopoverOpen: boolean = false;
   @state() filterText: string = '';
   @state() starredSettings: Set<string> = new Set();
   @state() selectedForAzure: Set<string> = new Set(); // Track selected items for bulk Azure copy
@@ -225,10 +224,6 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
     }
   }
 
-  closeSettingsPopover() {
-    this.settingsPopoverOpen = false;
-  }
-
   renderInfoPanel() {
     // If redaction rules are already configured, show simplified help panel
     if (this.hasRedactionRules) {
@@ -351,21 +346,16 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
         () => html`
           <div class="filter-container">
             <div class="settings-section">
-              <uui-popover 
-                id="settings-popover" 
-                ?open=${this.settingsPopoverOpen} 
-                placement="bottom-start"
-                @close=${() => this.closeSettingsPopover()}>
-                <uui-button
-                  slot="trigger"
-                  look="outline"
-                  label="Settings"
-                  compact
-                  title="Display settings"
-                  @click=${() => this.settingsPopoverOpen = !this.settingsPopoverOpen}>
-                  ⚙️
-                </uui-button>
-                <div slot="popover" class="settings-popover-content" @click=${(e: Event) => e.stopPropagation()}>
+              <uui-button
+                popovertarget="settings-popover"
+                look="outline"
+                label="Settings"
+                compact
+                title="Display settings">
+                ⚙️
+              </uui-button>
+              <uui-popover-container id="settings-popover" placement="bottom-start">
+                <div class="settings-popover-content">
                   <div class="settings-header">Display Settings</div>
                   <div class="toggle-item">
                     <uui-toggle
@@ -396,7 +386,7 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
                     </div>
                   `)}
                 </div>
-              </uui-popover>
+              </uui-popover-container>
             </div>
             <div class="filters-section">
               <div class="toggle-item">
@@ -1026,6 +1016,13 @@ export class EnvironmentInspectDashboardElement extends UmbElementMixin(LitEleme
       .help-button-wrapper {
         position: relative;
         display: inline-block;
+      }
+
+      .help-button-wrapper uui-button {
+        /* At the inherited 14px font-size, uui-button's internal centering math
+           for a lone icon (no text) renders it a few px off-center. Umbraco's own
+           icon-only header buttons avoid this by running at 18px; match that. */
+        font-size: 18px;
       }
 
       .help-button-wrapper .warning-indicator {
