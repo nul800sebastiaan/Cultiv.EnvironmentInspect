@@ -453,7 +453,7 @@ A handful of files are deliberately different between the two branches and marke
 - `.releaserc` — branch names for semantic-release
 - `Cultiv.EnvironmentInspect/Cultiv.EnvironmentInspect.csproj` and `Cultiv.EnvironmentInspect.DemoSite/Cultiv.EnvironmentInspect.DemoSite.csproj` — Umbraco package version pins (17.x range vs 18.x)
 - `Cultiv.EnvironmentInspect/Composers/CultivEnvironmentInspectComposer.cs` — v2 registers its OpenAPI document via Swashbuckle (`SwaggerGenOptions`/`BackOfficeSecurityRequirementsOperationFilterBase`); v3 uses ASP.NET Core's native OpenAPI generator (`AddBackOfficeOpenApiDocument`/`WithBackOfficeAuthentication`) since Umbraco 18 dropped Swashbuckle
-- `Cultiv.EnvironmentInspect/Client/package.json` — `@umbraco-cms/backoffice` major version, plus `@hey-api/openapi-ts`/`vite` versions and the hey-api SDK plugin config (v2 uses `asClass: true`; v3 uses `responseStyle: 'fields'`, which is *why* the generated SDK's call style differs — see above)
+- `Cultiv.EnvironmentInspect/Client/package.json` (and its `package-lock.json`) — `@umbraco-cms/backoffice` major version, plus `@hey-api/openapi-ts`/`vite` versions and the hey-api SDK plugin config (v2 uses `asClass: true`; v3 uses `responseStyle: 'fields'`, which is *why* the generated SDK's call style differs — see above). The lockfile is included here for the same reason as `package.json` itself: their dependency versions always differ between the branches, so it would conflict on every single merge otherwise.
 - `Cultiv.EnvironmentInspect/Client/scripts/generate-openapi.js` — the OpenAPI discovery URL format changed between majors (`/umbraco/swagger/{name}/swagger.json` on v2 vs `/umbraco/openapi/{name}.json` on v3) plus matching hey-api plugin filtering syntax
 
 `merge.ours.driver` isn't enabled by default — run this once per clone/worktree before merging across these branches:
@@ -461,7 +461,7 @@ A handful of files are deliberately different between the two branches and marke
 git config merge.ours.driver true
 ```
 
-**Important caveat**: because these files are whole-file `merge=ours`, a *shared* change to one of them on `develop/v2` (e.g. adding a new dependency to `Cultiv.EnvironmentInspect.csproj`, or touching shared logic inside `CultivEnvironmentInspectComposer.cs` like the DbContext registration or cache prewarm) will **not** automatically flow to `develop/v3` — the merge driver silently keeps v3's version. After merging, diff these files against their previous state on v2 (`git log -p develop/v2 -- <file>`) and manually reapply anything that isn't version/OpenAPI-registration-specific to the equivalent spot in v3's copy.
+**Important caveat**: because these files are whole-file `merge=ours`, a *shared* change to one of them on `develop/v2` (e.g. adding a new dependency to `Cultiv.EnvironmentInspect.csproj`, bumping an unrelated devDependency like `eslint` or `typescript` in `package.json`, or touching shared logic inside `CultivEnvironmentInspectComposer.cs` like the DbContext registration or cache prewarm) will **not** automatically flow to `develop/v3` — the merge driver silently keeps v3's version. After merging, diff these files against their previous state on v2 (`git log -p develop/v2 -- <file>`) and manually reapply anything that isn't version/OpenAPI-registration-specific to the equivalent spot in v3's copy.
 
 Everything else (business logic, controllers, services, most of the Client) merges normally — that's the whole point of this setup.
 
